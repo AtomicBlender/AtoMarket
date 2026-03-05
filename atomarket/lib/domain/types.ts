@@ -51,6 +51,7 @@ export interface Market {
 export interface Position {
   id: string;
   market_id: string;
+  market_title?: string;
   user_id: string;
   yes_shares: number;
   no_shares: number;
@@ -62,6 +63,7 @@ export interface Position {
 export interface Trade {
   id: string;
   market_id: string;
+  market_title?: string;
   user_id: string;
   outcome: OutcomeType;
   side: "BUY" | "SELL";
@@ -76,6 +78,8 @@ export interface Profile {
   id: string;
   display_name: string | null;
   is_admin: boolean;
+  is_active?: boolean;
+  deactivated_at?: string | null;
   neutron_balance: number;
   created_at: string;
 }

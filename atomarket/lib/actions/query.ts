@@ -78,13 +78,42 @@ export async function getPortfolio(userId: string): Promise<{
   const supabase = await createClient();
 
   const [{ data: positions }, { data: trades }] = await Promise.all([
-    supabase.from("positions").select("*").eq("user_id", userId).order("updated_at", { ascending: false }),
-    supabase.from("trades").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(100),
+    supabase
+      .from("positions")
+      .select("id, market_id, user_id, yes_shares, no_shares, net_spent_neutrons, realized_pnl_neutrons, updated_at, markets(title)")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("trades")
+      .select("id, market_id, user_id, outcome, side, quantity, cost_neutrons, price_before, price_after, created_at, markets(title)")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(100),
   ]);
 
+  const normalizedPositions: Position[] = ((positions ?? []) as Array<
+    Position & { markets?: { title?: string } | null }
+  >).map((position) => {
+    const { markets, ...base } = position;
+    return {
+      ...base,
+      market_title: markets?.title ?? undefined,
+    };
+  });
+
+  const normalizedTrades: Trade[] = ((trades ?? []) as Array<
+    Trade & { markets?: { title?: string } | null }
+  >).map((trade) => {
+    const { markets, ...base } = trade;
+    return {
+      ...base,
+      market_title: markets?.title ?? undefined,
+    };
+  });
+
   return {
-    positions: (positions as Position[] | null) ?? [],
-    trades: (trades as Trade[] | null) ?? [],
+    positions: normalizedPositions,
+    trades: normalizedTrades,
   };
 }
 

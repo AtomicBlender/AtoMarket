@@ -19,6 +19,7 @@ export async function createMarketAction(formData: FormData): Promise<ActionResu
     const supabase = await createClient();
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user) return { ok: false, message: "Sign in required." };
+    await assertActiveProfile(supabase, authData.user.id);
 
     const payload = validateCreateMarketInput({
       title: String(formData.get("title") ?? ""),
@@ -55,6 +56,9 @@ export async function createMarketAction(formData: FormData): Promise<ActionResu
 export async function placeTradeAction(formData: FormData): Promise<ActionResult> {
   try {
     const supabase = await createClient();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) return { ok: false, message: "Sign in required." };
+    await assertActiveProfile(supabase, authData.user.id);
 
     const marketId = String(formData.get("market_id") ?? "");
     const outcome = String(formData.get("outcome") ?? "YES");
@@ -83,6 +87,7 @@ export async function proposeResolutionAction(formData: FormData): Promise<Actio
     const supabase = await createClient();
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) return { ok: false, message: "Sign in required." };
+    await assertActiveProfile(supabase, authData.user.id);
 
     const marketId = String(formData.get("market_id") ?? "");
     const outcome = String(formData.get("proposed_outcome") ?? "YES");
@@ -145,6 +150,7 @@ export async function challengeResolutionAction(formData: FormData): Promise<Act
     const supabase = await createClient();
     const { data: authData } = await supabase.auth.getUser();
     if (!authData.user) return { ok: false, message: "Sign in required." };
+    await assertActiveProfile(supabase, authData.user.id);
 
     const proposalId = String(formData.get("proposal_id") ?? "");
     const marketId = String(formData.get("market_id") ?? "");
@@ -287,4 +293,19 @@ async function currentBalance(supabase: Awaited<ReturnType<typeof createClient>>
     .eq("id", userId)
     .single();
   return Number(profile?.neutron_balance ?? 0);
+}
+
+async function assertActiveProfile(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<void> {
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_active")
+    .eq("id", userId)
+    .single();
+
+  if (profile?.is_active === false) {
+    throw new Error("Account is inactive. Contact support to reactivate.");
+  }
 }

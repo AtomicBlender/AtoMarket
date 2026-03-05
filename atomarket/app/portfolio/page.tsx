@@ -14,24 +14,37 @@ export default async function PortfolioPage() {
 
   const [profile, portfolio] = await Promise.all([getProfile(user.id), getPortfolio(user.id)]);
 
+  const openPositions = portfolio.positions.filter((position) => position.yes_shares > 0 || position.no_shares > 0);
+
   return (
     <main>
       <MarketHeader />
       <section className="mx-auto max-w-6xl space-y-6 px-4 py-8">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
-          <h1 className="text-2xl font-semibold text-slate-100">Portfolio</h1>
-          <p className="mt-2 text-sm text-slate-400">Current Balance: {formatNeutrons(profile?.neutron_balance ?? 0)} neutrons</p>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Balance</p>
+            <p className="mt-2 text-2xl font-semibold text-emerald-200">{formatNeutrons(profile?.neutron_balance ?? 0)}</p>
+            <p className="text-xs text-slate-400">neutrons</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Open positions</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-100">{openPositions.length}</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Recent trades</p>
+            <p className="mt-2 text-2xl font-semibold text-slate-100">{portfolio.trades.length}</p>
+          </div>
         </div>
 
-        <section className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+        <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
           <h2 className="text-lg font-semibold text-slate-100">Positions</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-300">
-              <thead className="text-xs uppercase text-slate-400">
+              <thead className="text-xs uppercase text-slate-500">
                 <tr>
                   <th className="py-2">Market</th>
-                  <th className="py-2">YES Shares</th>
-                  <th className="py-2">NO Shares</th>
+                  <th className="py-2">YES</th>
+                  <th className="py-2">NO</th>
                   <th className="py-2">Net Spent</th>
                   <th className="py-2">Realized P&L</th>
                 </tr>
@@ -41,7 +54,7 @@ export default async function PortfolioPage() {
                   <tr key={position.id} className="border-t border-slate-800">
                     <td className="py-2">
                       <Link href={`/markets/${position.market_id}`} className="text-emerald-300 hover:text-emerald-200">
-                        {position.market_id.slice(0, 8)}
+                        {position.market_title ?? position.market_id.slice(0, 8)}
                       </Link>
                     </td>
                     <td className="py-2">{position.yes_shares.toFixed(2)}</td>
@@ -56,11 +69,11 @@ export default async function PortfolioPage() {
           {portfolio.positions.length === 0 ? <p className="text-sm text-slate-400">No positions yet.</p> : null}
         </section>
 
-        <section className="space-y-3 rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+        <section className="space-y-3 rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
           <h2 className="text-lg font-semibold text-slate-100">Trade History</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-300">
-              <thead className="text-xs uppercase text-slate-400">
+              <thead className="text-xs uppercase text-slate-500">
                 <tr>
                   <th className="py-2">Time</th>
                   <th className="py-2">Market</th>
@@ -75,7 +88,7 @@ export default async function PortfolioPage() {
                     <td className="py-2">{formatDateTime(trade.created_at)}</td>
                     <td className="py-2">
                       <Link href={`/markets/${trade.market_id}`} className="text-emerald-300 hover:text-emerald-200">
-                        {trade.market_id.slice(0, 8)}
+                        {trade.market_title ?? trade.market_id.slice(0, 8)}
                       </Link>
                     </td>
                     <td className="py-2">{trade.outcome}</td>

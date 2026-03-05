@@ -13,5 +13,14 @@ export function LogoutButton() {
     router.push("/markets");
   };
 
-  return <Button onClick={logout}>Logout</Button>;
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800"
+      onClick={logout}
+    >
+      Logout
+    </Button>
+  );
 }

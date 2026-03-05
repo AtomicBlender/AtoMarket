@@ -26,6 +26,21 @@ export default function Home() {
             </Button>
           </div>
         </div>
+
+        <div className="mt-14 grid gap-3 md:grid-cols-3">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">1. Browse</p>
+            <p className="mt-2 text-sm text-slate-300">Scan live probabilities and open markets in one feed.</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">2. Trade</p>
+            <p className="mt-2 text-sm text-slate-300">Buy YES/NO with instant LMSR pricing and cost preview.</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">3. Resolve</p>
+            <p className="mt-2 text-sm text-slate-300">Use auto sources or propose/challenge with evidence bonds.</p>
+          </div>
+        </div>
       </section>
     </main>
   );
