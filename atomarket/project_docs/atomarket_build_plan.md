@@ -1,4 +1,4 @@
-# AtoMarket MVP Build Plan (Implemented Baseline) 
+# AtoMarket MVP Build Plan (Implemented Baseline)
 
 This repo now includes a full MVP baseline for:
 - Neutron-based accounting
