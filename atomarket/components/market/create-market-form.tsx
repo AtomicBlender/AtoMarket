@@ -11,9 +11,22 @@ export function CreateMarketForm() {
   const router = useRouter();
   const [message, setMessage] = useState<string>("");
   const [pending, setPending] = useState(false);
+  const [title, setTitle] = useState("");
+  const [question, setQuestion] = useState("");
+
+  const TITLE_LIMIT = 100;
+  const QUESTION_LIMIT = 250;
+  const titleTooLong = title.length >= TITLE_LIMIT;
+  const questionTooLong = question.length >= QUESTION_LIMIT;
+  const hasLengthError = titleTooLong || questionTooLong;
 
   async function onAction(formData: FormData) {
+    if (hasLengthError) {
+      setMessage("Title must be under 100 characters and question must be under 250 characters.");
+      return;
+    }
     setPending(true);
+    setMessage("");
     const result = await createMarketAction(formData);
     if (result.ok && result.marketId) {
       router.push(`/markets/${result.marketId}`);
@@ -36,8 +49,13 @@ export function CreateMarketForm() {
               name="title"
               required
               placeholder="Will Utility X announce an SMR pilot site by Aug 31, 2026?"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
               className="h-11 border-slate-700 bg-slate-950 text-slate-100"
             />
+            <p className={`text-xs ${titleTooLong ? "text-rose-300" : "text-slate-500"}`}>
+              {title.length}/{TITLE_LIMIT} characters {titleTooLong ? "(must be under limit)" : ""}
+            </p>
           </div>
 
           <div className="grid gap-2 md:col-span-2">
@@ -47,9 +65,14 @@ export function CreateMarketForm() {
               name="question"
               required
               placeholder="Will Utility X publish a signed SMR pilot agreement by Aug 31, 2026?"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
               className="h-11 border-slate-700 bg-slate-950 text-slate-100"
             />
-            <p className="text-xs text-slate-500">Use clear YES/NO wording with a specific deadline.</p>
+            <p className={`text-xs ${questionTooLong ? "text-rose-300" : "text-slate-500"}`}>
+              Use clear YES/NO wording with a specific deadline. {question.length}/{QUESTION_LIMIT} characters{" "}
+              {questionTooLong ? "(must be under limit)" : ""}
+            </p>
           </div>
 
           <div className="grid gap-2 md:col-span-2">
@@ -191,7 +214,7 @@ export function CreateMarketForm() {
       </section>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-slate-800 pt-4">
-        <Button disabled={pending} className="h-11 bg-emerald-500 px-5 text-slate-950 hover:bg-emerald-400">
+        <Button disabled={pending || hasLengthError} className="h-11 bg-emerald-500 px-5 text-slate-950 hover:bg-emerald-400">
           {pending ? "Creating market..." : "Create Market"}
         </Button>
         <p className="text-xs text-slate-500">Tip: Use explicit deadlines and source expectations to avoid disputes.</p>

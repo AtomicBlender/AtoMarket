@@ -22,9 +22,6 @@ export function MarketCard({ market }: { market: Market }) {
       </div>
 
       <p className="line-clamp-2 text-sm text-slate-400">{market.question}</p>
-      {market.description ? (
-        <p className="line-clamp-2 text-xs text-slate-500">{market.description}</p>
-      ) : null}
 
       <div className="mt-4 space-y-2 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
         <div className="flex items-center justify-between text-xs">
@@ -48,7 +45,6 @@ export function MarketCard({ market }: { market: Market }) {
       </div>
 
       <div className="mt-3 flex items-center justify-between text-[11px] uppercase tracking-wide text-slate-500">
-        <span>{market.resolution_type.replaceAll("_", " ")}</span>
         <span className="transition group-hover:text-emerald-300">View market</span>
       </div>
     </Link>
