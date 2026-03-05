@@ -1,4 +1,4 @@
-# AtoMarket
+# AtoMarket 
 
 AtoMarket is a neutron-based binary prediction market MVP built with Next.js + Supabase.
 
