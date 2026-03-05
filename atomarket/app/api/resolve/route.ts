@@ -1,0 +1,23 @@
+import { NextResponse } from "next/server";
+import { attemptAutoResolveMarket } from "@/lib/domain/resolution";
+import { createClient } from "@/lib/supabase/server";
+
+export async function GET() {
+  const supabase = await createClient();
+
+  const { data: markets, error } = await supabase
+    .from("markets")
+    .select("id")
+    .in("resolution_type", ["URL_SELECTOR", "JSON_PATH"])
+    .in("status", ["OPEN", "CLOSED", "RESOLVING"])
+    .lte("close_time", new Date().toISOString())
+    .limit(25);
+
+  if (error) {
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+  }
+
+  const results = await Promise.all((markets ?? []).map((market) => attemptAutoResolveMarket(market.id)));
+
+  return NextResponse.json({ ok: true, processed: results.length, results });
+}
