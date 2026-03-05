@@ -1,8 +1,9 @@
 {
+  "_comment": "Vercel Hobby plan supports one cron run per day, so /api/resolve is scheduled daily.",
   "crons": [
     {
       "path": "/api/resolve",
-      "schedule": "*/30 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }

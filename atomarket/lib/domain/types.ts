@@ -25,13 +25,13 @@ export interface Market {
   id: string;
   title: string;
   question: string;
+  description: string | null;
   category: string | null;
   status: MarketStatus;
   close_time: string;
   resolution_deadline: string;
   resolution_type: ResolutionType;
   resolution_source: string;
-  resolution_url: string | null;
   resolution_rule: Record<string, unknown>;
   challenge_window_hours: number;
   proposal_bond_neutrons: number;
@@ -52,6 +52,11 @@ export interface Position {
   id: string;
   market_id: string;
   market_title?: string;
+  market_status?: MarketStatus;
+  market_resolved_outcome?: OutcomeType | null;
+  market_q_yes?: number;
+  market_q_no?: number;
+  market_b?: number;
   user_id: string;
   yes_shares: number;
   no_shares: number;
@@ -64,6 +69,8 @@ export interface Trade {
   id: string;
   market_id: string;
   market_title?: string;
+  market_status?: MarketStatus;
+  market_resolved_outcome?: OutcomeType | null;
   user_id: string;
   outcome: OutcomeType;
   side: "BUY" | "SELL";

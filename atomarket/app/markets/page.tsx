@@ -43,7 +43,7 @@ export default async function MarketsPage({ searchParams }: MarketsPageProps) {
           <div className="grid gap-2 md:grid-cols-[1.4fr_0.8fr_0.8fr_0.6fr]">
             <input
               name="search"
-              placeholder="Search question, title, or keyword"
+              placeholder="Search title, question, description, or keyword"
               defaultValue={params?.search ?? ""}
               className="h-11 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
             />

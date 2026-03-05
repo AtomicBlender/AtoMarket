@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { attemptAutoResolveMarket } from "@/lib/domain/resolution";
+import {
+  attemptAutoResolveMarket,
+  finalizeUnchallengedManualProposals,
+} from "@/lib/domain/resolution";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -17,7 +20,15 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
-  const results = await Promise.all((markets ?? []).map((market) => attemptAutoResolveMarket(market.id)));
+  const [autoResults, manualFinalized] = await Promise.all([
+    Promise.all((markets ?? []).map((market) => attemptAutoResolveMarket(market.id))),
+    finalizeUnchallengedManualProposals(),
+  ]);
 
-  return NextResponse.json({ ok: true, processed: results.length, results });
+  return NextResponse.json({
+    ok: true,
+    auto_processed: autoResults.length,
+    auto_results: autoResults,
+    manual_finalized: manualFinalized,
+  });
 }

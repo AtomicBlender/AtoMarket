@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { adminResolveDisputeAction, invalidateMarketAction } from "@/lib/actions/market";
+import {
+  adminResolveDisputeAction,
+  deferDisputeAction,
+  invalidateMarketAction,
+} from "@/lib/actions/market";
 import { Button } from "@/components/ui/button";
 
 export function AdminControls({ marketId }: { marketId: string }) {
@@ -14,6 +18,11 @@ export function AdminControls({ marketId }: { marketId: string }) {
 
   async function onInvalidate(formData: FormData) {
     const result = await invalidateMarketAction(formData);
+    setMessage(result.message ?? "");
+  }
+
+  async function onDefer(formData: FormData) {
+    const result = await deferDisputeAction(formData);
     setMessage(result.message ?? "");
   }
 
@@ -50,6 +59,19 @@ export function AdminControls({ marketId }: { marketId: string }) {
             className="h-10 min-w-56 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-slate-100"
           />
           <Button className="h-10 bg-rose-500 text-white hover:bg-rose-400">Invalidate + Refund</Button>
+        </div>
+      </form>
+
+      <form action={onDefer} className="space-y-2 rounded-xl border border-amber-500/35 bg-amber-500/5 p-3">
+        <p className="text-xs uppercase tracking-wide text-amber-300">Defer decision</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <input type="hidden" name="market_id" value={marketId} />
+          <input
+            name="notes"
+            defaultValue="Insufficient evidence at this time; pending additional source confirmation."
+            className="h-10 min-w-56 rounded-md border border-slate-700 bg-slate-950 px-2 text-sm text-slate-100"
+          />
+          <Button className="h-10 bg-amber-500 text-slate-950 hover:bg-amber-400">Defer</Button>
         </div>
       </form>
 

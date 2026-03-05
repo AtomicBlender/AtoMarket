@@ -35,7 +35,7 @@ export async function getMarkets(filters?: {
   if (filters?.search) {
     const s = filters.search.trim();
     if (s) {
-      query = query.or(`title.ilike.%${s}%,question.ilike.%${s}%`);
+      query = query.or(`title.ilike.%${s}%,question.ilike.%${s}%,description.ilike.%${s}%`);
     }
   }
 
@@ -49,25 +49,94 @@ export async function getMarketById(marketId: string): Promise<Market | null> {
   return (data as Market | null) ?? null;
 }
 
+export async function getPositionForMarket(userId: string, marketId: string): Promise<Position | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("positions")
+    .select(
+      "id, market_id, user_id, yes_shares, no_shares, net_spent_neutrons, realized_pnl_neutrons, updated_at, markets(title, status, resolved_outcome, q_yes, q_no, b)",
+    )
+    .eq("user_id", userId)
+    .eq("market_id", marketId)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  const row = data as Position & {
+    markets?: {
+      title?: string;
+      status?: Position["market_status"];
+      resolved_outcome?: Position["market_resolved_outcome"];
+      q_yes?: number;
+      q_no?: number;
+      b?: number;
+    } | null;
+  };
+
+  const { markets, ...base } = row;
+  return {
+    ...base,
+    market_title: markets?.title ?? undefined,
+    market_status: markets?.status ?? undefined,
+    market_resolved_outcome: markets?.resolved_outcome ?? null,
+    market_q_yes: markets?.q_yes ?? undefined,
+    market_q_no: markets?.q_no ?? undefined,
+    market_b: markets?.b ?? undefined,
+  };
+}
+
 export async function getMarketTimeline(marketId: string) {
   const supabase = await createClient();
 
-  const [{ data: proposals }, { data: challenges }] = await Promise.all([
+  const [{ data: proposals }, { data: challenges }, { data: adminActions }] = await Promise.all([
     supabase
       .from("resolution_proposals")
-      .select("*")
+      .select("*, profiles!resolution_proposals_proposed_by_fkey(display_name)")
       .eq("market_id", marketId)
       .order("created_at", { ascending: false }),
     supabase
       .from("resolution_challenges")
-      .select("*")
+      .select("*, profiles!resolution_challenges_challenged_by_fkey(display_name), resolution_proposals!resolution_challenges_proposal_id_fkey(status)")
+      .eq("market_id", marketId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("resolution_admin_actions")
+      .select("*, profiles!resolution_admin_actions_admin_user_id_fkey(display_name)")
       .eq("market_id", marketId)
       .order("created_at", { ascending: false }),
   ]);
 
+  const normalizedProposals = (proposals ?? []).map((proposal) => ({
+    ...proposal,
+    proposer_display_name:
+      proposal.profiles?.display_name ||
+      (proposal.proposed_by ? `user_${String(proposal.proposed_by).slice(0, 8)}` : "Unknown user"),
+  }));
+
+  const normalizedChallenges = (challenges ?? []).map((challenge) => ({
+    ...challenge,
+    challenger_display_name:
+      challenge.profiles?.display_name ||
+      (challenge.challenged_by ? `user_${String(challenge.challenged_by).slice(0, 8)}` : "Unknown user"),
+    challenge_status:
+      challenge.resolution_proposals?.status === "REJECTED"
+        ? "REJECTED"
+        : challenge.resolution_proposals?.status === "FINALIZED"
+          ? "FINALIZED"
+          : "ACTIVE",
+  }));
+
+  const normalizedAdminActions = (adminActions ?? []).map((action) => ({
+    ...action,
+    admin_display_name:
+      action.profiles?.display_name ||
+      (action.admin_user_id ? `user_${String(action.admin_user_id).slice(0, 8)}` : "Unknown admin"),
+  }));
+
   return {
-    proposals: proposals ?? [],
-    challenges: challenges ?? [],
+    proposals: normalizedProposals,
+    challenges: normalizedChallenges,
+    adminActions: normalizedAdminActions,
   };
 }
 
@@ -80,34 +149,54 @@ export async function getPortfolio(userId: string): Promise<{
   const [{ data: positions }, { data: trades }] = await Promise.all([
     supabase
       .from("positions")
-      .select("id, market_id, user_id, yes_shares, no_shares, net_spent_neutrons, realized_pnl_neutrons, updated_at, markets(title)")
+      .select(
+        "id, market_id, user_id, yes_shares, no_shares, net_spent_neutrons, realized_pnl_neutrons, updated_at, markets(title, status, resolved_outcome, q_yes, q_no, b)",
+      )
       .eq("user_id", userId)
       .order("updated_at", { ascending: false }),
     supabase
       .from("trades")
-      .select("id, market_id, user_id, outcome, side, quantity, cost_neutrons, price_before, price_after, created_at, markets(title)")
+      .select(
+        "id, market_id, user_id, outcome, side, quantity, cost_neutrons, price_before, price_after, created_at, markets(title, status, resolved_outcome)",
+      )
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(100),
   ]);
 
   const normalizedPositions: Position[] = ((positions ?? []) as Array<
-    Position & { markets?: { title?: string } | null }
+    Position & {
+      markets?: {
+        title?: string;
+        status?: Position["market_status"];
+        resolved_outcome?: Position["market_resolved_outcome"];
+        q_yes?: number;
+        q_no?: number;
+        b?: number;
+      } | null;
+    }
   >).map((position) => {
     const { markets, ...base } = position;
     return {
       ...base,
       market_title: markets?.title ?? undefined,
+      market_status: markets?.status ?? undefined,
+      market_resolved_outcome: markets?.resolved_outcome ?? null,
+      market_q_yes: markets?.q_yes ?? undefined,
+      market_q_no: markets?.q_no ?? undefined,
+      market_b: markets?.b ?? undefined,
     };
   });
 
   const normalizedTrades: Trade[] = ((trades ?? []) as Array<
-    Trade & { markets?: { title?: string } | null }
+    Trade & { markets?: { title?: string; status?: Trade["market_status"]; resolved_outcome?: Trade["market_resolved_outcome"] } | null }
   >).map((trade) => {
     const { markets, ...base } = trade;
     return {
       ...base,
       market_title: markets?.title ?? undefined,
+      market_status: markets?.status ?? undefined,
+      market_resolved_outcome: markets?.resolved_outcome ?? null,
     };
   });
 

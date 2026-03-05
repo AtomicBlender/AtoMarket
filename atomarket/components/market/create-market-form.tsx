@@ -1,45 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { createMarketAction } from "@/lib/actions/market";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-type ResolutionType = "URL_SELECTOR" | "JSON_PATH" | "MANUAL_WITH_BOND";
-
-const defaultRules: Record<ResolutionType, string> = {
-  URL_SELECTOR: '{\n  "selector": "body",\n  "operator": "contains",\n  "compare_value": "example"\n}',
-  JSON_PATH: '{\n  "json_path": "$.data.status",\n  "operator": "equals",\n  "compare_value": "approved"\n}',
-  MANUAL_WITH_BOND: '{\n  "evidence_requirements": "Link official source and explain the decisive statement."\n}',
-};
-
-const helperText: Record<ResolutionType, { title: string; body: string }> = {
-  URL_SELECTOR: {
-    title: "URL selector market",
-    body: "Use a stable public page plus selector/operator fields to auto-resolve.",
-  },
-  JSON_PATH: {
-    title: "JSON path market",
-    body: "Use an API endpoint and json_path/operator fields to auto-resolve.",
-  },
-  MANUAL_WITH_BOND: {
-    title: "Manual with bond",
-    body: "Resolution is proposed with evidence and can be challenged during the window.",
-  },
-};
-
 export function CreateMarketForm() {
+  const router = useRouter();
   const [message, setMessage] = useState<string>("");
   const [pending, setPending] = useState(false);
-  const [resolutionType, setResolutionType] = useState<ResolutionType>("URL_SELECTOR");
-  const [ruleText, setRuleText] = useState(defaultRules.URL_SELECTOR);
-
-  const helper = useMemo(() => helperText[resolutionType], [resolutionType]);
 
   async function onAction(formData: FormData) {
     setPending(true);
     const result = await createMarketAction(formData);
+    if (result.ok && result.marketId) {
+      router.push(`/markets/${result.marketId}`);
+      return;
+    }
     setMessage(result.message ?? "");
     setPending(false);
   }
@@ -48,28 +27,53 @@ export function CreateMarketForm() {
     <form action={onAction} className="space-y-6 rounded-2xl border border-slate-800 bg-slate-900/75 p-5">
       <section className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Market Basics</h2>
+
         <div className="grid gap-4 md:grid-cols-2">
           <div className="grid gap-2 md:col-span-2">
             <Label htmlFor="title">Title</Label>
-            <Input id="title" name="title" required className="h-11 border-slate-700 bg-slate-950 text-slate-100" />
-            <p className="text-xs text-slate-500">Clear and concise headline shown in market cards.</p>
+            <Input
+              id="title"
+              name="title"
+              required
+              placeholder="Will Utility X announce an SMR pilot site by Aug 31, 2026?"
+              className="h-11 border-slate-700 bg-slate-950 text-slate-100"
+            />
           </div>
 
           <div className="grid gap-2 md:col-span-2">
             <Label htmlFor="question">Question</Label>
-            <Input id="question" name="question" required className="h-11 border-slate-700 bg-slate-950 text-slate-100" />
-            <p className="text-xs text-slate-500">Binary YES/NO, unambiguous, and time-bounded.</p>
+            <Input
+              id="question"
+              name="question"
+              required
+              placeholder="Will Utility X publish a signed SMR pilot agreement by Aug 31, 2026?"
+              className="h-11 border-slate-700 bg-slate-950 text-slate-100"
+            />
+            <p className="text-xs text-slate-500">Use clear YES/NO wording with a specific deadline.</p>
+          </div>
+
+          <div className="grid gap-2 md:col-span-2">
+            <Label htmlFor="description">Description</Label>
+            <textarea
+              id="description"
+              name="description"
+              rows={3}
+              placeholder="Add context: what event is being tracked, how users should interpret the question, and any key assumptions."
+              className="rounded-md border border-slate-700 bg-slate-950 p-3 text-sm text-slate-100"
+            />
+            <p className="text-xs text-slate-500">Optional details to help traders understand the market context.</p>
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="category">Category</Label>
-            <Input id="category" name="category" placeholder="Regulation" className="h-11 border-slate-700 bg-slate-950 text-slate-100" />
+            <Input
+              id="category"
+              name="category"
+              placeholder="Regulation"
+              className="h-11 border-slate-700 bg-slate-950 text-slate-100"
+            />
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="resolution_source">Resolution Source</Label>
-            <Input id="resolution_source" name="resolution_source" required className="h-11 border-slate-700 bg-slate-950 text-slate-100" />
-          </div>
         </div>
       </section>
 
@@ -78,74 +82,81 @@ export function CreateMarketForm() {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="close_time">Close Time (UTC)</Label>
-            <Input id="close_time" name="close_time" type="datetime-local" required className="h-11 border-slate-700 bg-slate-950 text-slate-100" />
+            <Input
+              id="close_time"
+              name="close_time"
+              type="datetime-local"
+              required
+              className="h-11 border-slate-700 bg-slate-950 text-slate-100"
+            />
+            <p className="text-xs text-slate-500">
+              Trading stops at this time. Pick a moment just before the outcome can be confidently known.
+            </p>
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="resolution_deadline">Resolution Deadline (UTC)</Label>
-            <Input id="resolution_deadline" name="resolution_deadline" type="datetime-local" required className="h-11 border-slate-700 bg-slate-950 text-slate-100" />
+            <Input
+              id="resolution_deadline"
+              name="resolution_deadline"
+              type="datetime-local"
+              required
+              className="h-11 border-slate-700 bg-slate-950 text-slate-100"
+            />
+            <p className="text-xs text-slate-500">
+              Final time to resolve. If unresolved by this deadline, the market may be invalidated and refunded.
+            </p>
           </div>
         </div>
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Resolution Template</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Resolution Setup</h2>
+        <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+          <p className="text-sm font-medium text-slate-100">Submit Public Evidence with Bond</p>
+          <p className="mb-3 mt-1 text-xs text-slate-400">
+            Proposals can be submitted any time before the resolution deadline. Define clear evidence standards below.
+          </p>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-          <p className="text-sm font-medium text-slate-100">{helper.title}</p>
-          <p className="text-xs text-slate-400">{helper.body}</p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="resolution_type">Resolution Type</Label>
-            <select
-              id="resolution_type"
-              name="resolution_type"
-              value={resolutionType}
-              onChange={(event) => {
-                const nextType = event.target.value as ResolutionType;
-                setResolutionType(nextType);
-                setRuleText(defaultRules[nextType]);
-              }}
-              className="h-11 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
-            >
-              <option value="URL_SELECTOR">URL_SELECTOR</option>
-              <option value="JSON_PATH">JSON_PATH</option>
-              <option value="MANUAL_WITH_BOND">MANUAL_WITH_BOND</option>
-            </select>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="resolution_url">Resolution URL</Label>
-            <Input
-              id="resolution_url"
-              name="resolution_url"
-              placeholder={resolutionType === "MANUAL_WITH_BOND" ? "Optional" : "Required"}
-              className="h-11 border-slate-700 bg-slate-950 text-slate-100"
-            />
-          </div>
-
-          <div className="grid gap-2 md:col-span-2">
-            <Label htmlFor="resolution_rule">Resolution Rule JSON</Label>
+          <div className="mb-4 grid gap-2">
+            <Label htmlFor="resolution_source">Resolution Source</Label>
             <textarea
-              id="resolution_rule"
-              name="resolution_rule"
-              rows={7}
+              id="resolution_source"
+              name="resolution_source"
+              rows={2}
               required
-              value={ruleText}
-              onChange={(event) => setRuleText(event.target.value)}
+              placeholder="Example: NRC public docket + company press releases + SEC filings"
               className="rounded-md border border-slate-700 bg-slate-950 p-3 text-sm text-slate-100"
             />
+            <p className="text-xs text-slate-500">
+              List the sources resolvers should use. Be specific so evidence can be verified consistently.
+            </p>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="evidence_requirements">Evidence Requirements</Label>
+            <textarea
+              id="evidence_requirements"
+              name="evidence_requirements"
+              rows={4}
+              placeholder="Example: Include official announcement URL and the exact sentence proving the outcome."
+              className="rounded-md border border-slate-700 bg-slate-950 p-3 text-sm text-slate-100"
+            />
+            <p className="text-xs text-slate-500">
+              Define what counts as valid proof so proposers and challengers follow the same standard, regardless of
+              when the evidence was published.
+            </p>
           </div>
         </div>
+
+        <input type="hidden" name="resolution_type" value="MANUAL_WITH_BOND" />
       </section>
 
       <section className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">Challenge & Bonds</h2>
         <div className="grid gap-4 md:grid-cols-3">
           <div className="grid gap-2">
-            <Label htmlFor="challenge_window_hours">Challenge Window Hours</Label>
+            <Label htmlFor="challenge_window_hours">Challenge Window (Hours)</Label>
             <Input
               id="challenge_window_hours"
               name="challenge_window_hours"
@@ -183,7 +194,7 @@ export function CreateMarketForm() {
         <Button disabled={pending} className="h-11 bg-emerald-500 px-5 text-slate-950 hover:bg-emerald-400">
           {pending ? "Creating market..." : "Create Market"}
         </Button>
-        <p className="text-xs text-slate-500">Creation is permissioned to authenticated users and validated against template rules.</p>
+        <p className="text-xs text-slate-500">Tip: Use explicit deadlines and source expectations to avoid disputes.</p>
       </div>
 
       {message ? <p className="rounded-md bg-slate-800 p-2 text-sm text-slate-300">{message}</p> : null}

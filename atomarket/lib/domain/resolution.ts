@@ -155,3 +155,59 @@ export async function attemptAutoResolveMarket(marketId: string): Promise<{
     return { resolved: false, reason };
   }
 }
+
+export async function finalizeUnchallengedManualProposalsForMarket(marketId: string): Promise<number> {
+  const supabase = await createClient();
+
+  const { data: proposals, error } = await supabase
+    .from("resolution_proposals")
+    .select("id")
+    .eq("market_id", marketId)
+    .eq("status", "ACTIVE")
+    .lte("challenge_deadline", new Date().toISOString())
+    .limit(20);
+
+  if (error || !proposals?.length) return 0;
+
+  let finalizedCount = 0;
+
+  for (const proposal of proposals) {
+    const { data: result } = await supabase.rpc("finalize_active_proposal_if_unchallenged", {
+      p_proposal_id: proposal.id,
+    });
+
+    if (result === "finalized") {
+      finalizedCount += 1;
+    }
+  }
+
+  return finalizedCount;
+}
+
+export async function finalizeUnchallengedManualProposals(limit = 50): Promise<number> {
+  const supabase = await createClient();
+
+  const { data: proposals, error } = await supabase
+    .from("resolution_proposals")
+    .select("id")
+    .eq("status", "ACTIVE")
+    .lte("challenge_deadline", new Date().toISOString())
+    .order("challenge_deadline", { ascending: true })
+    .limit(limit);
+
+  if (error || !proposals?.length) return 0;
+
+  let finalizedCount = 0;
+
+  for (const proposal of proposals) {
+    const { data: result } = await supabase.rpc("finalize_active_proposal_if_unchallenged", {
+      p_proposal_id: proposal.id,
+    });
+
+    if (result === "finalized") {
+      finalizedCount += 1;
+    }
+  }
+
+  return finalizedCount;
+}
