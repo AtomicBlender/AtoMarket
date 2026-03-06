@@ -41,7 +41,7 @@ export default async function Home({ searchParams }: HomePageProps) {
 
   return (
     <main>
-      <MarketHeader includeViewer={false} />
+      <MarketHeader />
       <section className="mx-auto max-w-6xl space-y-8 px-4 py-8">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">AtoMarket Home</p>

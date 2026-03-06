@@ -22,7 +22,7 @@ export default async function PublicPortfolioPage({ params }: PublicPortfolioPag
 
   return (
     <main>
-      <MarketHeader includeViewer={false} />
+      <MarketHeader />
       <PortfolioView
         title={`${displayName}'s Portfolio`}
         subtitle={`@${profile.username}`}
