@@ -45,8 +45,11 @@ export default async function Home({ searchParams }: HomePageProps) {
       <section className="mx-auto max-w-6xl space-y-8 px-4 py-8">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">AtoMarket Home</p>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-100">Popular markets</h1>
+          <h1 className="mt-2 text-3xl font-semibold text-slate-100">A Nuclear Energy Prediction Market</h1>
           <p className="mt-1 text-sm text-slate-400">
+            Turn expert judgment into market signals on nuclear policy, technology, deployment, outages, and more.
+          </p>
+          <p className="mt-1 text-sm text-slate-500">
             {totalMarkets} total markets, {openCount} currently open for trading.
           </p>
         </div>
