@@ -40,12 +40,11 @@ export function SignUpForm({
     }
 
     try {
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? window.location.origin;
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${siteUrl}/markets`,
+          emailRedirectTo: window.location.origin,
         },
       });
       if (error) throw error;
