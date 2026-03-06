@@ -115,3 +115,37 @@ export interface LeaderboardEntry {
   resolved_markets_count: number;
   shares_traded: number;
 }
+
+export interface MarketTopHolder {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  shares: number;
+}
+
+export interface MarketTopPosition {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  shares: number;
+  current_value_neutrons: number;
+  cost_basis_neutrons: number;
+  unrealized_pnl_neutrons: number;
+  unrealized_pnl_pct: number | null;
+}
+
+export interface MarketPublicTrade {
+  id: string;
+  market_id: string;
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  outcome: OutcomeType;
+  side: "BUY" | "SELL";
+  quantity: number;
+  cost_neutrons: number;
+  sell_proceeds_neutrons?: number | null;
+  price_before: number;
+  price_after: number;
+  created_at: string;
+}

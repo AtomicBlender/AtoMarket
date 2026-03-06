@@ -1,13 +1,22 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarketHeader } from "@/components/market/header";
+import { MarketBottomTabs } from "@/components/market/market-bottom-tabs";
 import { ProbabilityHistoryChart } from "@/components/market/probability-history-chart";
 import { ResolutionControls } from "@/components/market/resolution-controls";
 import { StatusBadge } from "@/components/market/status-badge";
 import { TradeForm } from "@/components/market/trade-form";
 import { countdownTo, formatDateTime, formatNeutrons, formatPercent } from "@/lib/domain/format";
 import { yesPrice } from "@/lib/domain/lmsr";
-import { getMarketById, getMarketProbabilityHistory, getMarketTimeline, getPositionForMarket, getProfile, getViewer } from "@/lib/actions/query";
+import {
+  getMarketBottomTabsData,
+  getMarketById,
+  getMarketProbabilityHistory,
+  getMarketTimeline,
+  getPositionForMarket,
+  getProfile,
+  getViewer,
+} from "@/lib/actions/query";
 
 interface MarketDetailPageProps {
   params: Promise<{ id: string }>;
@@ -33,7 +42,10 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
     notFound();
   }
 
-  const timeline = await getMarketTimeline(market.id);
+  const [timeline, bottomTabsData] = await Promise.all([
+    getMarketTimeline(market.id),
+    getMarketBottomTabsData(market.id, 25),
+  ]);
   const evidenceRequirements =
     typeof market.resolution_rule?.["evidence_requirements"] === "string"
       ? (market.resolution_rule["evidence_requirements"] as string)
@@ -83,6 +95,10 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
 
   const yes = yesPrice(market.q_yes, market.q_no, market.b);
   const no = 1 - yes;
+  const closeTs = new Date(market.close_time).getTime();
+  const chartDomainEndTs = new Date(
+    Number.isFinite(closeTs) ? Math.min(Date.now(), closeTs) : Date.now(),
+  ).toISOString();
   const probabilityHistory = await getMarketProbabilityHistory(market.id, yes);
   const latestHistoryYes = probabilityHistory[probabilityHistory.length - 1]?.yes_probability ?? yes;
   const viewerMarkValue =
@@ -143,7 +159,12 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
                 />
               </div>
             </div>
-            <ProbabilityHistoryChart points={probabilityHistory} latestYesProbability={latestHistoryYes} />
+            <ProbabilityHistoryChart
+              points={probabilityHistory}
+              latestYesProbability={latestHistoryYes}
+              domainStartTs={market.created_at}
+              domainEndTs={chartDomainEndTs}
+            />
 
             <div className="grid gap-2 rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-300 md:grid-cols-2">
               <div>Close time: {formatDateTime(market.close_time)}</div>
@@ -303,6 +324,7 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
               market={market}
               disabled={tradingDisabled}
               isAuthenticated={Boolean(viewer)}
+              neutronBalance={viewerProfile?.neutron_balance ?? null}
               userYesShares={viewerPosition?.yes_shares ?? 0}
               userNoShares={viewerPosition?.no_shares ?? 0}
             />
@@ -316,6 +338,13 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
             />
           </aside>
         </div>
+        <MarketBottomTabs
+          holdersYes={bottomTabsData.holdersYes}
+          holdersNo={bottomTabsData.holdersNo}
+          positionsYes={bottomTabsData.positionsYes}
+          positionsNo={bottomTabsData.positionsNo}
+          recentActivity={bottomTabsData.recentActivity}
+        />
       </section>
     </main>
   );

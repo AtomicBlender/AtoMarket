@@ -6,6 +6,8 @@ interface ProbabilityHistoryChartProps {
   latestYesProbability: number;
   compact?: boolean;
   showHeader?: boolean;
+  domainStartTs?: string;
+  domainEndTs?: string;
 }
 
 const CHART_WIDTH = 900;
@@ -15,21 +17,40 @@ const PAD_RIGHT = 52;
 const PAD_BOTTOM = 26;
 const PAD_LEFT = 10;
 
-function getTimeDomain(points: ProbabilityHistoryPoint[]): { minTs: number; maxTs: number } {
+function parseTs(value?: string): number | null {
+  if (!value) return null;
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getTimeDomain(
+  points: ProbabilityHistoryPoint[],
+  domainStartTs?: string,
+  domainEndTs?: string,
+): { minTs: number; maxTs: number } {
   const times = points
     .map((point) => new Date(point.ts).getTime())
     .filter((value) => Number.isFinite(value));
+  const explicitStart = parseTs(domainStartTs);
+  const explicitEnd = parseTs(domainEndTs);
 
   if (times.length === 0) {
     const now = Date.now();
-    return { minTs: now, maxTs: now + 1 };
+    const baseStart = explicitStart ?? now;
+    const baseEnd = explicitEnd ?? now;
+    if (baseEnd <= baseStart) return { minTs: baseStart, maxTs: baseStart + 1 };
+    return { minTs: baseStart, maxTs: baseEnd };
   }
 
-  const minTs = Math.min(...times);
-  const maxTs = Math.max(...times);
+  const minObserved = Math.min(...times);
+  const maxObserved = Math.max(...times);
+  const minTs = explicitStart ?? minObserved;
+  const maxTs = explicitEnd ?? maxObserved;
+  const boundedMinTs = Math.min(minTs, minObserved);
+  const boundedMaxTs = Math.max(maxTs, maxObserved);
   return {
-    minTs,
-    maxTs: maxTs === minTs ? minTs + 1 : maxTs,
+    minTs: boundedMinTs,
+    maxTs: boundedMaxTs === boundedMinTs ? boundedMinTs + 1 : boundedMaxTs,
   };
 }
 
@@ -40,17 +61,54 @@ function xForPoint(ts: string, minTs: number, maxTs: number, innerWidth: number)
   return PAD_LEFT + Math.max(0, Math.min(1, ratio)) * innerWidth;
 }
 
-function buildPath(points: ProbabilityHistoryPoint[]) {
+function withDomainEndpoints(
+  points: ProbabilityHistoryPoint[],
+  minTs: number,
+  maxTs: number,
+): ProbabilityHistoryPoint[] {
+  const normalized = points
+    .map((point) => ({ ...point, parsedTs: new Date(point.ts).getTime() }))
+    .filter((point) => Number.isFinite(point.parsedTs))
+    .sort((a, b) => a.parsedTs - b.parsedTs);
+
+  if (normalized.length === 0) return [];
+
+  const first = normalized[0];
+  const last = normalized[normalized.length - 1];
+  const extended: ProbabilityHistoryPoint[] = normalized.map(({ ts, yes_probability }) => ({
+    ts,
+    yes_probability,
+  }));
+
+  if (minTs < first.parsedTs) {
+    extended.unshift({
+      ts: new Date(minTs).toISOString(),
+      yes_probability: first.yes_probability,
+    });
+  }
+
+  if (last.parsedTs < maxTs) {
+    extended.push({
+      ts: new Date(maxTs).toISOString(),
+      yes_probability: last.yes_probability,
+    });
+  }
+
+  return extended;
+}
+
+function buildPath(points: ProbabilityHistoryPoint[], domainStartTs?: string, domainEndTs?: string) {
   const innerWidth = CHART_WIDTH - PAD_LEFT - PAD_RIGHT;
   const innerHeight = CHART_HEIGHT - PAD_TOP - PAD_BOTTOM;
-  const { minTs, maxTs } = getTimeDomain(points);
+  const { minTs, maxTs } = getTimeDomain(points, domainStartTs, domainEndTs);
+  const plottedPoints = withDomainEndpoints(points, minTs, maxTs);
 
-  if (points.length === 1) {
-    const y = PAD_TOP + innerHeight * (1 - points[0].yes_probability);
+  if (plottedPoints.length <= 1) {
+    const y = PAD_TOP + innerHeight * (1 - (plottedPoints[0]?.yes_probability ?? 0.5));
     return `M ${PAD_LEFT} ${y} L ${PAD_LEFT + innerWidth} ${y}`;
   }
 
-  return points
+  return plottedPoints
     .map((point, index) => {
       const x = xForPoint(point.ts, minTs, maxTs, innerWidth);
       const y = PAD_TOP + innerHeight * (1 - point.yes_probability);
@@ -64,10 +122,13 @@ export function ProbabilityHistoryChart({
   latestYesProbability,
   compact = false,
   showHeader = true,
+  domainStartTs,
+  domainEndTs,
 }: ProbabilityHistoryChartProps) {
-  const path = buildPath(points);
-  const startDate = new Date(points[0].ts);
-  const endDate = new Date(points[points.length - 1].ts);
+  const path = buildPath(points, domainStartTs, domainEndTs);
+  const { minTs, maxTs } = getTimeDomain(points, domainStartTs, domainEndTs);
+  const startDate = new Date(minTs);
+  const endDate = new Date(maxTs);
   const yTicks = compact ? [1, 0.5, 0] : [1, 0.75, 0.5, 0.25, 0];
   const yTickFontSize = compact ? 15 : 18;
   const chartHeightClass = compact ? "h-[150px] w-full md:h-[170px]" : "h-[240px] w-full md:h-[280px]";

@@ -1,5 +1,16 @@
 import { createClient, createPublicClient } from "@/lib/supabase/server";
-import type { LeaderboardEntry, Market, Position, ProbabilityHistoryPoint, Profile, PublicProfile, Trade } from "@/lib/domain/types";
+import type {
+  LeaderboardEntry,
+  Market,
+  MarketPublicTrade,
+  MarketTopHolder,
+  MarketTopPosition,
+  Position,
+  ProbabilityHistoryPoint,
+  Profile,
+  PublicProfile,
+  Trade,
+} from "@/lib/domain/types";
 
 const PROFILE_COLUMNS = "id, display_name, username, is_admin, is_active, deactivated_at, neutron_balance, created_at";
 const MARKET_CARD_COLUMNS = "id, title, question, description, category, status, close_time, volume_neutrons, b, q_yes, q_no, created_at";
@@ -483,4 +494,59 @@ export async function getAdminDisputes() {
     .order("created_at", { ascending: true });
 
   return data ?? [];
+}
+
+export async function getMarketBottomTabsData(
+  marketId: string,
+  limit = 25,
+): Promise<{
+  holdersYes: MarketTopHolder[];
+  holdersNo: MarketTopHolder[];
+  positionsYes: MarketTopPosition[];
+  positionsNo: MarketTopPosition[];
+  recentActivity: MarketPublicTrade[];
+}> {
+  const supabase = createPublicClient();
+
+  const [
+    { data: holdersYes },
+    { data: holdersNo },
+    { data: positionsYes },
+    { data: positionsNo },
+    { data: recentActivity },
+  ] = await Promise.all([
+    supabase.rpc("get_market_top_holders_public", {
+      p_market_id: marketId,
+      p_outcome: "YES",
+      p_limit: limit,
+    }),
+    supabase.rpc("get_market_top_holders_public", {
+      p_market_id: marketId,
+      p_outcome: "NO",
+      p_limit: limit,
+    }),
+    supabase.rpc("get_market_top_positions_public", {
+      p_market_id: marketId,
+      p_outcome: "YES",
+      p_limit: limit,
+    }),
+    supabase.rpc("get_market_top_positions_public", {
+      p_market_id: marketId,
+      p_outcome: "NO",
+      p_limit: limit,
+    }),
+    supabase.rpc("get_market_trades_public", {
+      p_market_id: marketId,
+      p_limit: limit,
+      p_offset: 0,
+    }),
+  ]);
+
+  return {
+    holdersYes: (holdersYes as MarketTopHolder[] | null) ?? [],
+    holdersNo: (holdersNo as MarketTopHolder[] | null) ?? [],
+    positionsYes: (positionsYes as MarketTopPosition[] | null) ?? [],
+    positionsNo: (positionsNo as MarketTopPosition[] | null) ?? [],
+    recentActivity: (recentActivity as MarketPublicTrade[] | null) ?? [],
+  };
 }

@@ -14,6 +14,10 @@ export function FeaturedMarketCard({
 }) {
   const yes = yesPrice(market.q_yes, market.q_no, market.b);
   const no = 1 - yes;
+  const closeTs = new Date(market.close_time).getTime();
+  const chartDomainEndTs = new Date(
+    Number.isFinite(closeTs) ? Math.min(Date.now(), closeTs) : Date.now(),
+  ).toISOString();
   const latestHistoryYes = historyPoints[historyPoints.length - 1]?.yes_probability ?? yes;
   const compactVolume = new Intl.NumberFormat("en-US", {
     notation: "compact",
@@ -51,7 +55,14 @@ export function FeaturedMarketCard({
         </div>
       </div>
       <div className="mt-3">
-        <ProbabilityHistoryChart points={historyPoints} latestYesProbability={latestHistoryYes} compact showHeader={false} />
+        <ProbabilityHistoryChart
+          points={historyPoints}
+          latestYesProbability={latestHistoryYes}
+          compact
+          showHeader={false}
+          domainStartTs={market.created_at}
+          domainEndTs={chartDomainEndTs}
+        />
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">

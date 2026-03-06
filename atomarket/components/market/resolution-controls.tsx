@@ -30,6 +30,7 @@ export function ResolutionControls({
 }) {
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [pending, setPending] = useState(false);
+  const [confirmAcknowledged, setConfirmAcknowledged] = useState(false);
   const [confirmState, setConfirmState] = useState<
     | {
         type: "proposal" | "challenge";
@@ -93,6 +94,7 @@ export function ResolutionControls({
     event.preventDefault();
     setFeedback(null);
     if (!assertSufficientBalance(market.proposal_bond_neutrons)) return;
+    setConfirmAcknowledged(false);
     setConfirmState({
       type: "proposal",
       formData: new FormData(event.currentTarget),
@@ -103,6 +105,7 @@ export function ResolutionControls({
     event.preventDefault();
     setFeedback(null);
     if (!assertSufficientBalance(market.challenge_bond_neutrons)) return;
+    setConfirmAcknowledged(false);
     setConfirmState({
       type: "challenge",
       formData: new FormData(event.currentTarget),
@@ -111,8 +114,10 @@ export function ResolutionControls({
 
   async function confirmSubmission() {
     if (!confirmState) return;
+    if (!confirmAcknowledged) return;
     const { type, formData } = confirmState;
     setConfirmState(null);
+    setConfirmAcknowledged(false);
     if (type === "proposal") {
       await onPropose(formData);
       return;
@@ -335,10 +340,31 @@ export function ResolutionControls({
                 Your balance: <span className="font-semibold text-slate-100">{formatNeutrons(neutronBalance)} neutrons</span>
               </p>
             ) : null}
+            <label className="mt-3 flex items-start gap-2 text-sm text-slate-300">
+              <input
+                type="checkbox"
+                checked={confirmAcknowledged}
+                onChange={(event) => setConfirmAcknowledged(event.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-950 text-emerald-500"
+              />
+              <span>
+                I understand this {confirmState.type} will submit now and deduct a bond of{" "}
+                <span className="font-semibold text-slate-100">
+                  {formatNeutrons(
+                    confirmState.type === "proposal"
+                      ? market.proposal_bond_neutrons
+                      : market.challenge_bond_neutrons,
+                  )}{" "}
+                  neutrons
+                </span>
+                . The bond will be refunded if the resolution is finalized in your favor.
+              </span>
+            </label>
 
             <div className="mt-4 flex gap-2">
               <Button
                 type="button"
+                disabled={!confirmAcknowledged || pending}
                 onClick={confirmSubmission}
                 className="h-10 bg-emerald-500 text-slate-950 hover:bg-emerald-400"
               >
@@ -348,7 +374,10 @@ export function ResolutionControls({
                 type="button"
                 variant="outline"
                 className="h-10 border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800"
-                onClick={() => setConfirmState(null)}
+                onClick={() => {
+                  setConfirmState(null);
+                  setConfirmAcknowledged(false);
+                }}
               >
                 Cancel
               </Button>
