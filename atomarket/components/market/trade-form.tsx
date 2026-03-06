@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { placeTradeAction } from "@/lib/actions/market";
 import { estimateBuyCost, estimateSellCredit } from "@/lib/domain/lmsr";
 import { formatNeutrons, formatPercent } from "@/lib/domain/format";
@@ -30,6 +31,10 @@ export function TradeForm({
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const maxSellShares = outcome === "YES" ? userYesShares : userNoShares;
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
+  const loginHref = `/auth/login?next=${encodeURIComponent(nextPath)}`;
 
   const estimate = useMemo(
     () => {
@@ -216,7 +221,7 @@ export function TradeForm({
       {message ? <p className="rounded-md bg-slate-800 p-2 text-sm text-slate-300">{message}</p> : null}
       {!isAuthenticated ? (
         <p className="rounded-md border border-sky-400/30 bg-sky-500/10 p-2 text-xs text-sky-200">
-          Sign in to trade. <Link href="/auth/login" className="underline">Open login</Link>
+          Sign in to trade. <Link href={loginHref} className="underline">Open login</Link>
         </p>
       ) : null}
       {disabled ? (

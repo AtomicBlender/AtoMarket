@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   attemptAutoResolveAction,
   challengeResolutionAction,
@@ -36,6 +37,10 @@ export function ResolutionControls({
       }
     | null
   >(null);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
+  const loginHref = `/auth/login?next=${encodeURIComponent(nextPath)}`;
 
   async function onAutoResolve(formData: FormData) {
     setPending(true);
@@ -290,7 +295,7 @@ export function ResolutionControls({
 
       {!isAuthenticated ? (
         <p className="rounded-md border border-sky-400/30 bg-sky-500/10 p-2 text-xs text-sky-200">
-          Sign in to propose, challenge, or trigger auto-resolution. <Link href="/auth/login" className="underline">Open login</Link>
+          Sign in to propose, challenge, or trigger auto-resolution. <Link href={loginHref} className="underline">Open login</Link>
         </p>
       ) : null}
 

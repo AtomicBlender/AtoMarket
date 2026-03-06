@@ -57,7 +57,9 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isPublicRoute) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone();
+    const nextPath = `${request.nextUrl.pathname}${request.nextUrl.search}`;
     url.pathname = "/auth/login";
+    url.searchParams.set("next", nextPath);
     return NextResponse.redirect(url);
   }
 

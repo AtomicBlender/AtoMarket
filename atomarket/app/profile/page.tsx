@@ -9,7 +9,7 @@ export default async function ProfilePage() {
   const user = await getViewer();
 
   if (!user) {
-    redirect("/auth/login");
+    redirect("/auth/login?next=/profile");
   }
 
   const profile = await getProfile(user.id);

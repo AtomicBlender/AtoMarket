@@ -63,3 +63,17 @@ export function validateProposalEligibility(createdAt: string | null, isAdmin: b
     throw new Error("Account must be at least 7 days old to propose or challenge.");
   }
 }
+
+const USERNAME_REGEX = /^[a-z0-9_]{3,24}$/;
+
+export function normalizeUsername(input: string): string {
+  return input.trim().toLowerCase();
+}
+
+export function validateUsername(input: string): string {
+  const normalized = normalizeUsername(input);
+  if (!USERNAME_REGEX.test(normalized)) {
+    throw new Error("Username must be 3-24 chars, lowercase letters, numbers, or underscores.");
+  }
+  return normalized;
+}

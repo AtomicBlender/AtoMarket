@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MarketHeader } from "@/components/market/header";
 import { ProbabilityHistoryChart } from "@/components/market/probability-history-chart";
@@ -172,7 +173,16 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
                         Proposal {proposal.proposed_outcome} ({proposal.status})
                       </div>
                       <div className="mt-1 text-xs text-slate-400">At: {formatDateTime(proposal.created_at)}</div>
-                      <div className="mt-1 text-xs text-slate-400">Proposed by: {proposal.proposer_display_name}</div>
+                      <div className="mt-1 text-xs text-slate-400">
+                        Proposed by:{" "}
+                        {proposal.proposer_username ? (
+                          <Link href={`/u/${proposal.proposer_username}`} className="text-emerald-300 hover:text-emerald-200">
+                            {proposal.proposer_display_name}
+                          </Link>
+                        ) : (
+                          proposal.proposer_display_name
+                        )}
+                      </div>
                       <div className="mt-1 text-xs text-slate-400">Bond: {formatNeutrons(proposal.bond_neutrons)} neutrons</div>
                       <div className="text-xs text-slate-400">Challenge deadline: {formatDateTime(proposal.challenge_deadline)}</div>
                       <div className="mt-1 text-xs text-slate-400">Evidence URL: {proposal.evidence_url ?? "n/a"}</div>
@@ -189,7 +199,16 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
                         Challenge {challenge.challenge_outcome} ({challenge.challenge_status})
                       </div>
                       <div className="mt-1 text-xs text-slate-400">At: {formatDateTime(challenge.created_at)}</div>
-                      <div className="mt-1 text-xs text-slate-400">Challenged by: {challenge.challenger_display_name}</div>
+                      <div className="mt-1 text-xs text-slate-400">
+                        Challenged by:{" "}
+                        {challenge.challenger_username ? (
+                          <Link href={`/u/${challenge.challenger_username}`} className="text-emerald-300 hover:text-emerald-200">
+                            {challenge.challenger_display_name}
+                          </Link>
+                        ) : (
+                          challenge.challenger_display_name
+                        )}
+                      </div>
                       <div className="mt-1 text-xs text-slate-400">Bond: {formatNeutrons(challenge.bond_neutrons)} neutrons</div>
                       <div className="mt-1 text-xs text-slate-400">Evidence URL: {challenge.evidence_url ?? "n/a"}</div>
                       <div className="mt-1 text-xs text-slate-300">{challenge.evidence_note ?? ""}</div>
@@ -201,7 +220,16 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
                 return (
                   <div key={event.id} className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 text-sm text-slate-300">
                     <div className="font-medium text-amber-200">Admin action: {action.action_type}</div>
-                    <div className="mt-1 text-xs text-slate-400">By: {action.admin_display_name}</div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      By:{" "}
+                      {action.admin_username ? (
+                        <Link href={`/u/${action.admin_username}`} className="text-emerald-300 hover:text-emerald-200">
+                          {action.admin_display_name}
+                        </Link>
+                      ) : (
+                        action.admin_display_name
+                      )}
+                    </div>
                     <div className="mt-1 text-xs text-slate-400">At: {formatDateTime(action.created_at)}</div>
                     <div className="mt-1 text-xs text-slate-300">{action.note ?? ""}</div>
                   </div>

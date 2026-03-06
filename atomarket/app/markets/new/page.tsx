@@ -9,7 +9,7 @@ export default async function NewMarketPage() {
   const user = await getViewer();
 
   if (!user) {
-    redirect("/auth/login");
+    redirect("/auth/login?next=/markets/new");
   }
 
   return (

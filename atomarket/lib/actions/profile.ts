@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { validateUsername } from "@/lib/domain/validation";
 import { createClient } from "@/lib/supabase/server";
 
 type ActionResult = {
@@ -36,6 +37,44 @@ export async function updateDisplayNameAction(formData: FormData): Promise<Actio
     revalidatePath("/profile");
     revalidatePath("/");
     revalidatePath("/markets");
+
+    return { ok: true, message: "Display name updated." };
+  } catch (error) {
+    return { ok: false, message: asMessage(error) };
+  }
+}
+
+export async function updateUsernameAction(formData: FormData): Promise<ActionResult> {
+  try {
+    const supabase = await createClient();
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !authData.user) {
+      return { ok: false, message: "Sign in required." };
+    }
+
+    const username = validateUsername(String(formData.get("username") ?? ""));
+    const { data: currentProfile } = await supabase.from("profiles").select("username").eq("id", authData.user.id).single();
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ username })
+      .eq("id", authData.user.id);
+
+    if (error) {
+      if (error.message.toLowerCase().includes("duplicate")) {
+        return { ok: false, message: "That username is already taken." };
+      }
+      return { ok: false, message: error.message };
+    }
+
+    revalidatePath("/profile");
+    revalidatePath("/portfolio");
+    if (currentProfile?.username && currentProfile.username !== username) {
+      revalidatePath(`/u/${currentProfile.username}`);
+    }
+    revalidatePath(`/u/${username}`);
+    revalidatePath("/");
 
     return { ok: true, message: "Username updated." };
   } catch (error) {

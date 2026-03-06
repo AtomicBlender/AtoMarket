@@ -78,8 +78,6 @@ export interface Trade {
   quantity: number;
   cost_neutrons: number;
   sell_proceeds_neutrons?: number | null;
-  sell_cost_basis_neutrons?: number | null;
-  realized_pnl_neutrons?: number | null;
   price_before: number;
   price_after: number;
   created_at: string;
@@ -88,6 +86,7 @@ export interface Trade {
 export interface Profile {
   id: string;
   display_name: string | null;
+  username?: string | null;
   is_admin: boolean;
   is_active?: boolean;
   deactivated_at?: string | null;
@@ -98,4 +97,21 @@ export interface Profile {
 export interface ProbabilityHistoryPoint {
   ts: string;
   yes_probability: number;
+}
+
+export interface PublicProfile {
+  user_id: string;
+  username: string;
+  display_name: string | null;
+}
+
+export interface LeaderboardEntry {
+  username: string;
+  display_name: string | null;
+  net_gain_neutrons: number;
+  total_cost_neutrons: number;
+  total_return_neutrons: number;
+  accuracy_score: number | null;
+  resolved_markets_count: number;
+  shares_traded: number;
 }

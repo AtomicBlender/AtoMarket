@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Market, Position, ProbabilityHistoryPoint, Profile, Trade } from "@/lib/domain/types";
+import type { LeaderboardEntry, Market, Position, ProbabilityHistoryPoint, Profile, PublicProfile, Trade } from "@/lib/domain/types";
 
 export async function getViewer() {
   const supabase = await createClient();
@@ -14,6 +14,15 @@ export async function getProfile(userId?: string): Promise<Profile | null> {
   const { data } = await supabase.from("profiles").select("*").eq("id", userId).single();
 
   return (data as Profile | null) ?? null;
+}
+
+export async function isUsernameAvailable(username: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("is_username_available", {
+    p_username: username,
+  });
+  if (error) return false;
+  return Boolean(data);
 }
 
 export async function getMarkets(filters?: {
@@ -59,6 +68,61 @@ export async function getMarkets(filters?: {
   });
 }
 
+export async function getHomePageMarkets(): Promise<{
+  popularMarkets: Market[];
+  totalMarkets: number;
+  openCount: number;
+}> {
+  const supabase = await createClient();
+
+  const [{ data: popularMarkets }, { count: totalMarkets }, { count: openCount }] = await Promise.all([
+    supabase
+      .from("markets")
+      .select("*")
+      .eq("status", "OPEN")
+      .order("volume_neutrons", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(7),
+    supabase.from("markets").select("id", { count: "exact", head: true }),
+    supabase.from("markets").select("id", { count: "exact", head: true }).eq("status", "OPEN"),
+  ]);
+
+  return {
+    popularMarkets: (popularMarkets as Market[] | null) ?? [],
+    totalMarkets: totalMarkets ?? 0,
+    openCount: openCount ?? 0,
+  };
+}
+
+export async function getMarketsFeed(
+  filters: { status?: string; category?: string; search?: string },
+  limit = 24,
+  offset = 0,
+): Promise<{ markets: Market[]; totalCount: number }> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_markets_feed", {
+    p_status: filters.status ?? "ALL",
+    p_category: filters.category ?? null,
+    p_search: filters.search ?? null,
+    p_limit: limit,
+    p_offset: offset,
+  });
+
+  const rows = (data as Array<Market & { total_count: number }> | null) ?? [];
+  const totalCount = rows[0]?.total_count ?? 0;
+  const markets = rows as unknown as Market[];
+  return { markets, totalCount };
+}
+
+export async function getHomeLeaderboard(windowDays = 30, limit = 100): Promise<LeaderboardEntry[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_home_leaderboard", {
+    p_window_days: windowDays,
+    p_limit: limit,
+  });
+  return (data as LeaderboardEntry[] | null) ?? [];
+}
+
 export async function getMarketById(marketId: string): Promise<Market | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("markets").select("*").eq("id", marketId).single();
@@ -87,11 +151,9 @@ export async function getMarketProbabilityHistory(
   fallbackYesProbability: number,
 ): Promise<ProbabilityHistoryPoint[]> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("trades")
-    .select("created_at, price_before, price_after")
-    .eq("market_id", marketId)
-    .order("created_at", { ascending: true });
+  const { data } = await supabase.rpc("get_market_probability_history_public", {
+    p_market_id: marketId,
+  });
 
   const trades = (data as Array<{ created_at: string; price_before: number; price_after: number }> | null) ?? [];
 
@@ -121,6 +183,70 @@ export async function getMarketProbabilityHistory(
     })),
     300,
   );
+}
+
+export async function getMarketProbabilityHistoryMap(
+  marketIds: string[],
+  fallbackYesProbabilityByMarketId: Record<string, number>,
+): Promise<Record<string, ProbabilityHistoryPoint[]>> {
+  if (marketIds.length === 0) return {};
+
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_market_probability_history_public_batch", {
+    p_market_ids: marketIds,
+  });
+
+  const trades =
+    (data as Array<{ market_id: string; created_at: string; price_before: number; price_after: number }> | null) ?? [];
+
+  const grouped = new Map<string, Array<{ created_at: string; price_before: number; price_after: number }>>();
+  for (const trade of trades) {
+    const list = grouped.get(trade.market_id) ?? [];
+    list.push({
+      created_at: trade.created_at,
+      price_before: trade.price_before,
+      price_after: trade.price_after,
+    });
+    grouped.set(trade.market_id, list);
+  }
+
+  const nowIso = new Date().toISOString();
+  const result: Record<string, ProbabilityHistoryPoint[]> = {};
+
+  for (const marketId of marketIds) {
+    const fallback = fallbackYesProbabilityByMarketId[marketId] ?? 0.5;
+    const marketTrades = grouped.get(marketId) ?? [];
+
+    if (marketTrades.length === 0) {
+      result[marketId] = [{ ts: nowIso, yes_probability: fallback }];
+      continue;
+    }
+
+    const first = marketTrades[0];
+    const points: ProbabilityHistoryPoint[] = [
+      {
+        ts: first.created_at,
+        yes_probability: Number(first.price_before ?? fallback),
+      },
+    ];
+
+    for (const trade of marketTrades) {
+      points.push({
+        ts: trade.created_at,
+        yes_probability: Number(trade.price_after ?? fallback),
+      });
+    }
+
+    result[marketId] = downsampleHistory(
+      points.map((point) => ({
+        ts: point.ts,
+        yes_probability: Math.max(0, Math.min(1, point.yes_probability)),
+      })),
+      140,
+    );
+  }
+
+  return result;
 }
 
 export async function getPositionForMarket(userId: string, marketId: string): Promise<Position | null> {
@@ -165,23 +291,26 @@ export async function getMarketTimeline(marketId: string) {
   const [{ data: proposals }, { data: challenges }, { data: adminActions }] = await Promise.all([
     supabase
       .from("resolution_proposals")
-      .select("*, profiles!resolution_proposals_proposed_by_fkey(display_name)")
+      .select("*, profiles!resolution_proposals_proposed_by_fkey(display_name, username)")
       .eq("market_id", marketId)
       .order("created_at", { ascending: false }),
     supabase
       .from("resolution_challenges")
-      .select("*, profiles!resolution_challenges_challenged_by_fkey(display_name), resolution_proposals!resolution_challenges_proposal_id_fkey(status)")
+      .select(
+        "*, profiles!resolution_challenges_challenged_by_fkey(display_name, username), resolution_proposals!resolution_challenges_proposal_id_fkey(status)",
+      )
       .eq("market_id", marketId)
       .order("created_at", { ascending: false }),
     supabase
       .from("resolution_admin_actions")
-      .select("*, profiles!resolution_admin_actions_admin_user_id_fkey(display_name)")
+      .select("*, profiles!resolution_admin_actions_admin_user_id_fkey(display_name, username)")
       .eq("market_id", marketId)
       .order("created_at", { ascending: false }),
   ]);
 
   const normalizedProposals = (proposals ?? []).map((proposal) => ({
     ...proposal,
+    proposer_username: proposal.profiles?.username ?? null,
     proposer_display_name:
       proposal.profiles?.display_name ||
       (proposal.proposed_by ? `user_${String(proposal.proposed_by).slice(0, 8)}` : "Unknown user"),
@@ -189,6 +318,7 @@ export async function getMarketTimeline(marketId: string) {
 
   const normalizedChallenges = (challenges ?? []).map((challenge) => ({
     ...challenge,
+    challenger_username: challenge.profiles?.username ?? null,
     challenger_display_name:
       challenge.profiles?.display_name ||
       (challenge.challenged_by ? `user_${String(challenge.challenged_by).slice(0, 8)}` : "Unknown user"),
@@ -202,6 +332,7 @@ export async function getMarketTimeline(marketId: string) {
 
   const normalizedAdminActions = (adminActions ?? []).map((action) => ({
     ...action,
+    admin_username: action.profiles?.username ?? null,
     admin_display_name:
       action.profiles?.display_name ||
       (action.admin_user_id ? `user_${String(action.admin_user_id).slice(0, 8)}` : "Unknown admin"),
@@ -231,11 +362,10 @@ export async function getPortfolio(userId: string): Promise<{
     supabase
       .from("trades")
       .select(
-        "id, market_id, user_id, outcome, side, quantity, cost_neutrons, sell_proceeds_neutrons, sell_cost_basis_neutrons, realized_pnl_neutrons, price_before, price_after, created_at, markets(title, status, resolved_outcome)",
+        "id, market_id, user_id, outcome, side, quantity, cost_neutrons, sell_proceeds_neutrons, price_before, price_after, created_at, markets(title, status, resolved_outcome)",
       )
       .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(100),
+      .order("created_at", { ascending: false }),
   ]);
 
   const normalizedPositions: Position[] = ((positions ?? []) as Array<
@@ -277,6 +407,48 @@ export async function getPortfolio(userId: string): Promise<{
   return {
     positions: normalizedPositions,
     trades: normalizedTrades,
+  };
+}
+
+export async function getPublicProfileByUsername(username: string): Promise<PublicProfile | null> {
+  const normalizedUsername = username.trim().toLowerCase();
+  if (!normalizedUsername) return null;
+
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_public_profile_by_username", {
+    p_username: normalizedUsername,
+  });
+
+  const rows = (data as PublicProfile[] | null) ?? [];
+  return rows[0] ?? null;
+}
+
+export async function getPublicPortfolioByUsername(username: string): Promise<{
+  positions: Position[];
+  trades: Trade[];
+}> {
+  const normalizedUsername = username.trim().toLowerCase();
+  if (!normalizedUsername) {
+    return {
+      positions: [],
+      trades: [],
+    };
+  }
+
+  const supabase = await createClient();
+
+  const [{ data: positions }, { data: trades }] = await Promise.all([
+    supabase.rpc("get_public_portfolio_positions", {
+      p_username: normalizedUsername,
+    }),
+    supabase.rpc("get_public_portfolio_trades", {
+      p_username: normalizedUsername,
+    }),
+  ]);
+
+  return {
+    positions: (positions as Position[] | null) ?? [],
+    trades: (trades as Trade[] | null) ?? [],
   };
 }
 
