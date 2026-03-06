@@ -147,7 +147,7 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
             <div className="grid gap-2 rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-300 md:grid-cols-2">
               <div>Close time: {formatDateTime(market.close_time)}</div>
               <div>Resolution deadline: {formatDateTime(market.resolution_deadline)}</div>
-              <div>Close in: {countdownTo(market.close_time)}</div>
+              <div>Countdown: {countdownTo(market.close_time)}</div>
               <div>Deadline in: {countdownTo(market.resolution_deadline)}</div>
               <div>Volume: {formatNeutrons(market.volume_neutrons ?? 0)} neutrons</div>
               <div>Resolve attempts: {market.resolution_attempts}</div>

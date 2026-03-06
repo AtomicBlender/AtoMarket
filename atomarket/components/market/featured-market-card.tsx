@@ -58,7 +58,7 @@ export function FeaturedMarketCard({
           <div className="font-medium">{formatDateTime(market.close_time)}</div>
         </div>
         <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-2 text-slate-300">
-          <div className="text-slate-500">Close in</div>
+          <div className="text-slate-500">Countdown</div>
           <div className="font-medium">{countdownTo(market.close_time)}</div>
         </div>
       </div>
