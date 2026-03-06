@@ -50,7 +50,7 @@ export function TopMarketsCarousel({
   const progressPct = Math.max(0, Math.min(100, (progressMs / AUTOPLAY_MS) * 100));
 
   return (
-    <div className="space-y-3">
+    <div className="min-w-0 space-y-3">
       <div
         className="overflow-hidden rounded-2xl"
         onMouseEnter={() => setIsPaused(true)}

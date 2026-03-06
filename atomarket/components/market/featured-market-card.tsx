@@ -23,7 +23,7 @@ export function FeaturedMarketCard({
   return (
     <Link
       href={`/markets/${market.id}`}
-      className="group block min-w-[310px] snap-start rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900/90 to-slate-950/80 p-4 md:min-w-[360px]"
+      className="group block w-full max-w-full snap-start rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900/90 to-slate-950/80 p-4"
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="space-y-1">
