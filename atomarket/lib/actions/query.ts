@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { Market, Position, Profile, Trade } from "@/lib/domain/types";
+import type { Market, Position, ProbabilityHistoryPoint, Profile, Trade } from "@/lib/domain/types";
 
 export async function getViewer() {
   const supabase = await createClient();
@@ -22,7 +22,7 @@ export async function getMarkets(filters?: {
   search?: string;
 }): Promise<Market[]> {
   const supabase = await createClient();
-  let query = supabase.from("markets").select("*").order("created_at", { ascending: false });
+  let query = supabase.from("markets").select("*");
 
   if (filters?.status && filters.status !== "ALL") {
     query = query.eq("status", filters.status);
@@ -40,13 +40,87 @@ export async function getMarkets(filters?: {
   }
 
   const { data } = await query;
-  return (data as Market[] | null) ?? [];
+  const markets = (data as Market[] | null) ?? [];
+
+  const statusFilter = filters?.status && filters.status !== "ALL" ? filters.status : "ALL";
+
+  return markets.sort((a, b) => {
+    if (statusFilter === "ALL") {
+      const aOpenRank = a.status === "OPEN" ? 0 : 1;
+      const bOpenRank = b.status === "OPEN" ? 0 : 1;
+      if (aOpenRank !== bOpenRank) return aOpenRank - bOpenRank;
+    }
+
+    const aVolume = a.volume_neutrons ?? 0;
+    const bVolume = b.volume_neutrons ?? 0;
+    if (aVolume !== bVolume) return bVolume - aVolume;
+
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 }
 
 export async function getMarketById(marketId: string): Promise<Market | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("markets").select("*").eq("id", marketId).single();
   return (data as Market | null) ?? null;
+}
+
+function downsampleHistory(points: ProbabilityHistoryPoint[], maxPoints: number): ProbabilityHistoryPoint[] {
+  if (points.length <= maxPoints) return points;
+  if (maxPoints <= 2) return [points[0], points[points.length - 1]];
+
+  const sampled: ProbabilityHistoryPoint[] = [points[0]];
+  const interiorCount = maxPoints - 2;
+  const step = (points.length - 2) / interiorCount;
+
+  for (let i = 1; i <= interiorCount; i += 1) {
+    const index = Math.min(points.length - 2, Math.max(1, Math.round(i * step)));
+    sampled.push(points[index]);
+  }
+
+  sampled.push(points[points.length - 1]);
+  return sampled;
+}
+
+export async function getMarketProbabilityHistory(
+  marketId: string,
+  fallbackYesProbability: number,
+): Promise<ProbabilityHistoryPoint[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("trades")
+    .select("created_at, price_before, price_after")
+    .eq("market_id", marketId)
+    .order("created_at", { ascending: true });
+
+  const trades = (data as Array<{ created_at: string; price_before: number; price_after: number }> | null) ?? [];
+
+  if (trades.length === 0) {
+    return [{ ts: new Date().toISOString(), yes_probability: fallbackYesProbability }];
+  }
+
+  const first = trades[0];
+  const points: ProbabilityHistoryPoint[] = [
+    {
+      ts: first.created_at,
+      yes_probability: Number(first.price_before ?? fallbackYesProbability),
+    },
+  ];
+
+  for (const trade of trades) {
+    points.push({
+      ts: trade.created_at,
+      yes_probability: Number(trade.price_after ?? fallbackYesProbability),
+    });
+  }
+
+  return downsampleHistory(
+    points.map((point) => ({
+      ts: point.ts,
+      yes_probability: Math.max(0, Math.min(1, point.yes_probability)),
+    })),
+    300,
+  );
 }
 
 export async function getPositionForMarket(userId: string, marketId: string): Promise<Position | null> {

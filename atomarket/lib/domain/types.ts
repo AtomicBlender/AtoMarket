@@ -94,3 +94,8 @@ export interface Profile {
   neutron_balance: number;
   created_at: string;
 }
+
+export interface ProbabilityHistoryPoint {
+  ts: string;
+  yes_probability: number;
+}

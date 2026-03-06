@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import { MarketHeader } from "@/components/market/header";
+import { ProbabilityHistoryChart } from "@/components/market/probability-history-chart";
 import { ResolutionControls } from "@/components/market/resolution-controls";
 import { StatusBadge } from "@/components/market/status-badge";
 import { TradeForm } from "@/components/market/trade-form";
 import { countdownTo, formatDateTime, formatNeutrons, formatPercent } from "@/lib/domain/format";
 import { yesPrice } from "@/lib/domain/lmsr";
 import { finalizeUnchallengedManualProposalsForMarket } from "@/lib/domain/resolution";
-import { getMarketById, getMarketTimeline, getPositionForMarket, getProfile, getViewer } from "@/lib/actions/query";
+import { getMarketById, getMarketProbabilityHistory, getMarketTimeline, getPositionForMarket, getProfile, getViewer } from "@/lib/actions/query";
 
 interface MarketDetailPageProps {
   params: Promise<{ id: string }>;
@@ -83,6 +84,8 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
 
   const yes = yesPrice(market.q_yes, market.q_no, market.b);
   const no = 1 - yes;
+  const probabilityHistory = await getMarketProbabilityHistory(market.id, yes);
+  const latestHistoryYes = probabilityHistory[probabilityHistory.length - 1]?.yes_probability ?? yes;
   const viewerMarkValue =
     viewerPosition != null ? viewerPosition.yes_shares * yes + viewerPosition.no_shares * no : null;
   const viewerUnrealized =
@@ -138,6 +141,7 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
                 <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${Math.round(yes * 100)}%` }} />
               </div>
             </div>
+            <ProbabilityHistoryChart points={probabilityHistory} latestYesProbability={latestHistoryYes} />
 
             <div className="grid gap-2 rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-300 md:grid-cols-2">
               <div>Close time: {formatDateTime(market.close_time)}</div>
