@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 
 type Rule = Record<string, unknown>;
+type ResolveOptions = {
+  fetchTimeoutMs?: number;
+};
 
 function readByJsonPath(payload: unknown, path: string): unknown {
   // Minimal JSON path support for dot notation and [index], e.g. $.data.items[0].status
@@ -69,7 +72,31 @@ function extractBySelector(html: string, selector: string): string {
   return "";
 }
 
+async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export async function attemptAutoResolveMarket(marketId: string): Promise<{
+  resolved: boolean;
+  outcome?: "YES" | "NO";
+  reason?: string;
+}> {
+  return attemptAutoResolveMarketWithOptions(marketId, {});
+}
+
+export async function attemptAutoResolveMarketWithOptions(
+  marketId: string,
+  options: ResolveOptions = {},
+): Promise<{
   resolved: boolean;
   outcome?: "YES" | "NO";
   reason?: string;
@@ -92,9 +119,10 @@ export async function attemptAutoResolveMarket(marketId: string): Promise<{
   }
 
   const rule = (market.resolution_rule ?? {}) as Rule;
+  const fetchTimeoutMs = Math.max(1000, options.fetchTimeoutMs ?? 5000);
 
   try {
-    const res = await fetch(market.resolution_url, { cache: "no-store" });
+    const res = await fetchWithTimeout(market.resolution_url, fetchTimeoutMs);
     if (!res.ok) throw new Error(`fetch_failed_${res.status}`);
 
     let compareTarget = "";
@@ -151,7 +179,12 @@ export async function attemptAutoResolveMarket(marketId: string): Promise<{
       return { resolved: false, reason: "invalidated" };
     }
 
-    const reason = error instanceof Error ? error.message : "unknown_error";
+    const reason =
+      error instanceof Error && error.name === "AbortError"
+        ? "fetch_timeout"
+        : error instanceof Error
+          ? error.message
+          : "unknown_error";
     return { resolved: false, reason };
   }
 }

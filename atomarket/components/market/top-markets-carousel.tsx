@@ -5,7 +5,7 @@ import { FeaturedMarketCard } from "@/components/market/featured-market-card";
 import type { Market, ProbabilityHistoryPoint } from "@/lib/domain/types";
 
 const AUTOPLAY_MS = 7500;
-const PROGRESS_TICK_MS = 50;
+const PROGRESS_TICK_MS = 100;
 
 export function TopMarketsCarousel({
   markets,

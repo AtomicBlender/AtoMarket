@@ -22,10 +22,11 @@ AtoMarket is a neutron-based binary prediction market MVP built with Next.js + S
 
 ## Setup
 1. Copy `.env.example` to `.env.local` and add Supabase values.
-2. Apply migration: `supabase/migrations/20260305093000_atomarket_mvp.sql`.
-3. Optionally seed sample markets with `supabase/seed.sql`.
-4. Set at least one admin account in `profiles` (`is_admin = true`).
-5. Install and run:
+2. Set `CRON_SECRET` and configure your Vercel cron to send `Authorization: Bearer <CRON_SECRET>` for `/api/resolve`.
+3. Apply migration: `supabase/migrations/20260305093000_atomarket_mvp.sql`.
+4. Optionally seed sample markets with `supabase/seed.sql`.
+5. Set at least one admin account in `profiles` (`is_admin = true`).
+6. Install and run:
    - `npm install`
    - `npm run dev`
 

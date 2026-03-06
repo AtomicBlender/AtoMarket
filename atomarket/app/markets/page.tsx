@@ -12,7 +12,7 @@ interface MarketsPageProps {
   }>;
 }
 
-export const dynamic = "force-dynamic";
+export const revalidate = 90;
 
 const statuses = ["ALL", "OPEN", "CLOSED", "RESOLVING", "RESOLVED", "INVALID_REFUND"] as const;
 const MARKETS_CHUNK = 24;
@@ -42,7 +42,7 @@ export default async function MarketsPage({ searchParams }: MarketsPageProps) {
 
   return (
     <main>
-      <MarketHeader />
+      <MarketHeader includeViewer={false} />
       <section className="mx-auto max-w-6xl px-4 py-8">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>

@@ -7,7 +7,6 @@ import { StatusBadge } from "@/components/market/status-badge";
 import { TradeForm } from "@/components/market/trade-form";
 import { countdownTo, formatDateTime, formatNeutrons, formatPercent } from "@/lib/domain/format";
 import { yesPrice } from "@/lib/domain/lmsr";
-import { finalizeUnchallengedManualProposalsForMarket } from "@/lib/domain/resolution";
 import { getMarketById, getMarketProbabilityHistory, getMarketTimeline, getPositionForMarket, getProfile, getViewer } from "@/lib/actions/query";
 
 interface MarketDetailPageProps {
@@ -25,7 +24,6 @@ function formatEstimatedNeutrons(value: number): string {
 
 export default async function MarketDetailPage({ params }: MarketDetailPageProps) {
   const { id } = await params;
-  await finalizeUnchallengedManualProposalsForMarket(id);
   const [market, viewer] = await Promise.all([getMarketById(id), getViewer()]);
   const [viewerProfile, viewerPosition] = viewer
     ? await Promise.all([getProfile(viewer.id), getPositionForMarket(viewer.id, id)])

@@ -6,7 +6,7 @@ import { TopUsersLeaderboard } from "@/components/market/top-users-leaderboard";
 import { getHomeLeaderboard, getHomePageMarkets, getMarketProbabilityHistoryMap, getMarketsFeed } from "@/lib/actions/query";
 import { yesPrice } from "@/lib/domain/lmsr";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 90;
 
 const HOME_MARKETS_CHUNK = 24;
 const HOME_MARKETS_MAX = 240;
@@ -26,7 +26,7 @@ export default async function Home({ searchParams }: HomePageProps) {
 
   const [{ popularMarkets, totalMarkets, openCount }, leaderboard, allMarketsFeed] = await Promise.all([
     getHomePageMarkets(),
-    getHomeLeaderboard(30, 100),
+    getHomeLeaderboard(30, 25),
     getMarketsFeed({ status: "ALL" }, allCount, 0),
   ]);
   const allMarkets = allMarketsFeed.markets;
@@ -41,7 +41,7 @@ export default async function Home({ searchParams }: HomePageProps) {
 
   return (
     <main>
-      <MarketHeader />
+      <MarketHeader includeViewer={false} />
       <section className="mx-auto max-w-6xl space-y-8 px-4 py-8">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">AtoMarket Home</p>

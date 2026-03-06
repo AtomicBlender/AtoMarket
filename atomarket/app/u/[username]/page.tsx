@@ -3,7 +3,7 @@ import { MarketHeader } from "@/components/market/header";
 import { PortfolioView } from "@/components/portfolio/portfolio-view";
 import { getPublicPortfolioByUsername, getPublicProfileByUsername } from "@/lib/actions/query";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 90;
 
 interface PublicPortfolioPageProps {
   params: Promise<{ username: string }>;
@@ -22,7 +22,7 @@ export default async function PublicPortfolioPage({ params }: PublicPortfolioPag
 
   return (
     <main>
-      <MarketHeader />
+      <MarketHeader includeViewer={false} />
       <PortfolioView
         title={`${displayName}'s Portfolio`}
         subtitle={`@${profile.username}`}

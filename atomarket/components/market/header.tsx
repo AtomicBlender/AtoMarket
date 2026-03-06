@@ -10,19 +10,23 @@ const navItems = [
   { href: "/markets/new", label: "Create" },
 ];
 
-export async function MarketHeader() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
-
-  const profile = user
-      ? await supabase
-        .from("profiles")
-        .select("display_name, neutron_balance, is_admin")
-        .eq("id", user.id)
-        .single()
-        .then((res) => res.data)
-    : null;
+export async function MarketHeader({ includeViewer = true }: { includeViewer?: boolean }) {
+  const [user, profile] = includeViewer
+    ? await (async () => {
+        const supabase = await createClient();
+        const { data } = await supabase.auth.getUser();
+        const currentUser = data.user;
+        const currentProfile = currentUser
+          ? await supabase
+              .from("profiles")
+              .select("display_name, neutron_balance, is_admin")
+              .eq("id", currentUser.id)
+              .single()
+              .then((res) => res.data)
+          : null;
+        return [currentUser, currentProfile] as const;
+      })()
+    : [null, null];
 
   return (
     <header className="sticky top-0 z-30 border-b border-emerald-500/20 bg-slate-950/90 backdrop-blur-md">
