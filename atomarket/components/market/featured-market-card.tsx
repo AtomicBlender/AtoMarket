@@ -37,14 +37,16 @@ export function FeaturedMarketCard({
 
       <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <div className="text-3xl font-semibold text-sky-300">{formatPercent(latestHistoryYes)} chance</div>
+          <div className={`text-3xl font-semibold ${latestHistoryYes >= 0.5 ? "text-sky-300" : "text-rose-300"}`}>
+            {formatPercent(latestHistoryYes)} chance
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
-          <span className="flex h-11 items-center justify-center rounded-md bg-emerald-500 font-medium text-slate-950 transition-colors hover:bg-emerald-400">
-            YES {formatPercent(yes)}
-          </span>
           <span className="flex h-11 items-center justify-center rounded-md bg-rose-500 font-medium text-white transition-colors hover:bg-rose-400">
             NO {formatPercent(no)}
+          </span>
+          <span className="flex h-11 items-center justify-center rounded-md bg-emerald-500 font-medium text-slate-950 transition-colors hover:bg-emerald-400">
+            YES {formatPercent(yes)}
           </span>
         </div>
       </div>

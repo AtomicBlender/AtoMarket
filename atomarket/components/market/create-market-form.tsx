@@ -48,7 +48,7 @@ export function CreateMarketForm() {
               id="title"
               name="title"
               required
-              placeholder="Will Utility X announce an SMR pilot site by Aug 31, 2026?"
+              placeholder="Utility X SMR Pilot by August 2026"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               className="h-11 border-slate-700 bg-slate-950 text-slate-100"

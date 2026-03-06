@@ -133,11 +133,14 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
                 <span>LMSR</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="font-semibold text-emerald-200">YES {formatPercent(yes)}</span>
                 <span className="font-semibold text-rose-200">NO {formatPercent(no)}</span>
+                <span className="font-semibold text-emerald-200">YES {formatPercent(yes)}</span>
               </div>
-              <div className="mt-2 h-2 rounded-full bg-slate-800">
-                <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${Math.round(yes * 100)}%` }} />
+              <div className="relative mt-2 h-2 rounded-full bg-slate-800">
+                <div
+                  className={`absolute inset-y-0 left-0 rounded-full ${yes >= 0.5 ? "bg-emerald-400" : "bg-rose-400"}`}
+                  style={{ width: `${Math.round(yes * 100)}%` }}
+                />
               </div>
             </div>
             <ProbabilityHistoryChart points={probabilityHistory} latestYesProbability={latestHistoryYes} />

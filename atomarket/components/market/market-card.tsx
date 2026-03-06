@@ -29,11 +29,16 @@ export function MarketCard({ market }: { market: Market }) {
 
       <div className="mt-4 space-y-2 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-emerald-200">YES {formatPercent(yes)}</span>
           <span className="text-rose-200">NO {formatPercent(no)}</span>
+          <span className="text-emerald-200">YES {formatPercent(yes)}</span>
         </div>
-        <div className="h-2 rounded-full bg-slate-800">
-          <div className="h-2 rounded-full bg-emerald-400 transition-all" style={{ width: `${Math.round(yes * 100)}%` }} />
+        <div className="relative h-2 rounded-full bg-slate-800">
+          <div
+            className={`absolute inset-y-0 left-0 rounded-full transition-all ${
+              yes >= 0.5 ? "bg-emerald-400" : "bg-rose-400"
+            }`}
+            style={{ width: `${Math.round(yes * 100)}%` }}
+          />
         </div>
       </div>
 

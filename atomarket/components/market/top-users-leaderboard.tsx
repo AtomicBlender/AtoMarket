@@ -14,7 +14,7 @@ function formatSignedNeutrons(value: number): string {
 function formatPercent(value: number | null | undefined): string {
   if (value == null) return "—";
   const pct = value * 100;
-  return `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+  return `${pct.toFixed(1)}%`;
 }
 
 function pnlClass(value: number): string {
@@ -67,7 +67,9 @@ export function TopUsersLeaderboard({ entries }: { entries: LeaderboardEntry[] }
         </div>
       </div>
 
-      <p className="mt-2 text-xs text-slate-500">Last 30 days · Min 20 shares traded · Accuracy uses resolved outcomes</p>
+      <p className="mt-2 text-xs text-slate-500">
+        Last 30 days · Min 20 shares traded · P&L is realized on sells · Accuracy is equal-weight hit rate on resolved markets
+      </p>
 
       <div className="mt-3 space-y-2">
         {ranked.length === 0 ? (
