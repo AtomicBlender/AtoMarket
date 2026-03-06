@@ -41,6 +41,7 @@ export interface Market {
   resolved_at: string | null;
   invalid_reason: string | null;
   resolution_attempts: number;
+  volume_neutrons: number;
   b: number;
   q_yes: number;
   q_no: number;
@@ -76,6 +77,9 @@ export interface Trade {
   side: "BUY" | "SELL";
   quantity: number;
   cost_neutrons: number;
+  sell_proceeds_neutrons?: number | null;
+  sell_cost_basis_neutrons?: number | null;
+  realized_pnl_neutrons?: number | null;
   price_before: number;
   price_after: number;
   created_at: string;

@@ -144,7 +144,7 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
               <div>Resolution deadline: {formatDateTime(market.resolution_deadline)}</div>
               <div>Close in: {countdownTo(market.close_time)}</div>
               <div>Deadline in: {countdownTo(market.resolution_deadline)}</div>
-              <div>Liquidity b: {formatNeutrons(market.b)}</div>
+              <div>Volume: {formatNeutrons(market.volume_neutrons ?? 0)} neutrons</div>
               <div>Resolve attempts: {market.resolution_attempts}</div>
             </div>
 
@@ -266,7 +266,13 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
                 )}
               </section>
             ) : null}
-            <TradeForm market={market} disabled={tradingDisabled} isAuthenticated={Boolean(viewer)} />
+            <TradeForm
+              market={market}
+              disabled={tradingDisabled}
+              isAuthenticated={Boolean(viewer)}
+              userYesShares={viewerPosition?.yes_shares ?? 0}
+              userNoShares={viewerPosition?.no_shares ?? 0}
+            />
             <ResolutionControls
               market={market}
               activeProposalId={activeProposal?.id}

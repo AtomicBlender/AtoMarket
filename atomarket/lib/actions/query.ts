@@ -157,7 +157,7 @@ export async function getPortfolio(userId: string): Promise<{
     supabase
       .from("trades")
       .select(
-        "id, market_id, user_id, outcome, side, quantity, cost_neutrons, price_before, price_after, created_at, markets(title, status, resolved_outcome)",
+        "id, market_id, user_id, outcome, side, quantity, cost_neutrons, sell_proceeds_neutrons, sell_cost_basis_neutrons, realized_pnl_neutrons, price_before, price_after, created_at, markets(title, status, resolved_outcome)",
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false })

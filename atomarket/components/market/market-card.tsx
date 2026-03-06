@@ -7,6 +7,10 @@ import { StatusBadge } from "@/components/market/status-badge";
 export function MarketCard({ market }: { market: Market }) {
   const yes = yesPrice(market.q_yes, market.q_no, market.b);
   const no = 1 - yes;
+  const compactVolume = new Intl.NumberFormat("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(market.volume_neutrons ?? 0);
 
   return (
     <Link
@@ -46,6 +50,9 @@ export function MarketCard({ market }: { market: Market }) {
 
       <div className="mt-3 flex items-center justify-between text-[11px] uppercase tracking-wide text-slate-500">
         <span className="transition group-hover:text-emerald-300">View market</span>
+        <span className="rounded border border-slate-700 px-2 py-0.5 normal-case tracking-normal text-slate-400">
+          Vol {compactVolume}
+        </span>
       </div>
     </Link>
   );

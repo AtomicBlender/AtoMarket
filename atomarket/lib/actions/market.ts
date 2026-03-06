@@ -15,6 +15,16 @@ function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unexpected error";
 }
 
+function toTradeMessage(raw: string): string {
+  if (raw.includes("insufficient_shares")) return "Insufficient shares to sell that quantity.";
+  if (raw.includes("insufficient_neutrons")) return "Insufficient neutrons.";
+  if (raw.includes("market_closed")) return "Trading is closed for this market.";
+  if (raw.includes("invalid_quantity")) return "Quantity must be greater than zero.";
+  if (raw.includes("invalid_trade_cost")) return "Invalid buy cost for this trade.";
+  if (raw.includes("invalid_trade_credit")) return "Invalid sell credit for this trade.";
+  return raw;
+}
+
 export async function createMarketAction(formData: FormData): Promise<ActionResult> {
   try {
     const supabase = await createClient();
@@ -63,21 +73,35 @@ export async function placeTradeAction(formData: FormData): Promise<ActionResult
     await assertActiveProfile(supabase, authData.user.id);
 
     const marketId = String(formData.get("market_id") ?? "");
+    const side = String(formData.get("side") ?? "BUY").toUpperCase();
     const outcome = String(formData.get("outcome") ?? "YES");
     const quantity = Number(formData.get("quantity") ?? "0");
+    if (side !== "BUY" && side !== "SELL") {
+      return { ok: false, message: "Invalid trade side." };
+    }
 
-    const { error } = await supabase.rpc("place_trade_buy_only", {
-      p_market_id: marketId,
-      p_outcome: outcome,
-      p_quantity: quantity,
-    });
+    const { error } =
+      side === "BUY"
+        ? await supabase.rpc("place_trade_buy_only", {
+            p_market_id: marketId,
+            p_outcome: outcome,
+            p_quantity: quantity,
+          })
+        : await supabase.rpc("place_trade_sell_only", {
+            p_market_id: marketId,
+            p_outcome: outcome,
+            p_quantity: quantity,
+          });
 
-    if (error) return { ok: false, message: error.message };
+    if (error) return { ok: false, message: toTradeMessage(error.message) };
 
     revalidatePath(`/markets/${marketId}`);
     revalidatePath("/portfolio");
     revalidatePath("/markets");
 
+    if (side === "SELL") {
+      return { ok: true, message: `Sold ${quantity} ${outcome} shares.` };
+    }
     return { ok: true, message: `Bought ${quantity} ${outcome} shares.` };
   } catch (error) {
     return { ok: false, message: toErrorMessage(error) };

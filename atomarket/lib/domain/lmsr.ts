@@ -39,3 +39,33 @@ export function estimateBuyCost(params: {
     yesPriceAfter: yesPrice(nextQYes, nextQNo, liquidity),
   };
 }
+
+export function estimateSellCredit(params: {
+  qYes: number;
+  qNo: number;
+  liquidity: number;
+  outcome: "YES" | "NO";
+  quantity: number;
+}): { creditNeutrons: number; yesPriceBefore: number; yesPriceAfter: number } {
+  const { qYes, qNo, liquidity, outcome, quantity } = params;
+
+  const nextQYes = outcome === "YES" ? qYes - quantity : qYes;
+  const nextQNo = outcome === "NO" ? qNo - quantity : qNo;
+
+  if (nextQYes < 0 || nextQNo < 0) {
+    return {
+      creditNeutrons: 0,
+      yesPriceBefore: yesPrice(qYes, qNo, liquidity),
+      yesPriceAfter: yesPrice(qYes, qNo, liquidity),
+    };
+  }
+
+  const costBefore = lmsrCost(qYes, qNo, liquidity);
+  const costAfter = lmsrCost(nextQYes, nextQNo, liquidity);
+
+  return {
+    creditNeutrons: Math.floor(Math.max(0, costBefore - costAfter)),
+    yesPriceBefore: yesPrice(qYes, qNo, liquidity),
+    yesPriceAfter: yesPrice(nextQYes, nextQNo, liquidity),
+  };
+}

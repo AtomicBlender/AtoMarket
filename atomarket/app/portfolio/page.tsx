@@ -24,6 +24,22 @@ export default async function PortfolioPage() {
 
   const openPositions = portfolio.positions.filter((position) => position.yes_shares > 0 || position.no_shares > 0);
   const totalRealizedPnl = portfolio.positions.reduce((sum, position) => sum + position.realized_pnl_neutrons, 0);
+  const totalUnrealizedPnl = portfolio.positions.reduce((sum, position) => {
+    const isOpenLike =
+      position.market_status === "OPEN" ||
+      position.market_status === "CLOSED" ||
+      position.market_status === "RESOLVING";
+    const hasPricing =
+      typeof position.market_q_yes === "number" &&
+      typeof position.market_q_no === "number" &&
+      typeof position.market_b === "number";
+    if (!isOpenLike || !hasPricing) return sum;
+    const currentYes = yesPrice(position.market_q_yes as number, position.market_q_no as number, position.market_b as number);
+    const currentNo = 1 - currentYes;
+    const markToMarketValue = position.yes_shares * currentYes + position.no_shares * currentNo;
+    return sum + (markToMarketValue - position.net_spent_neutrons);
+  }, 0);
+  const totalNetPnl = totalRealizedPnl + totalUnrealizedPnl;
 
   return (
     <main>
@@ -35,7 +51,7 @@ export default async function PortfolioPage() {
             <p className="mt-2 text-2xl font-semibold text-emerald-200">{formatNeutrons(profile?.neutron_balance ?? 0)}</p>
             <p className="text-xs text-slate-400">neutrons</p>
           </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
+          <div className="rounded-2xl iborder border-slate-800 bg-slate-900/75 p-4">
             <p className="text-xs uppercase tracking-wide text-slate-500">Open positions</p>
             <p className="mt-2 text-2xl font-semibold text-slate-100">{openPositions.length}</p>
           </div>
@@ -43,13 +59,29 @@ export default async function PortfolioPage() {
             <p className="text-xs uppercase tracking-wide text-slate-500">Recent trades</p>
             <p className="mt-2 text-2xl font-semibold text-slate-100">{portfolio.trades.length}</p>
           </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4 md:col-span-3">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
             <p className="text-xs uppercase tracking-wide text-slate-500">Total Realized P&L</p>
             <p className={`mt-2 text-2xl font-semibold ${totalRealizedPnl >= 0 ? "text-emerald-200" : "text-rose-200"}`}>
               {totalRealizedPnl >= 0 ? "+" : ""}
               {formatNeutrons(totalRealizedPnl)}
             </p>
-            <p className="text-xs text-slate-400">neutrons from settled markets</p>
+            <p className="text-xs text-slate-400">Booked from SELL trades and settlement.</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Total Unrealized P&L</p>
+            <p className={`mt-2 text-2xl font-semibold ${totalUnrealizedPnl >= 0 ? "text-emerald-200" : "text-rose-200"}`}>
+              {totalUnrealizedPnl >= 0 ? "+" : ""}
+              {formatNeutrons(totalUnrealizedPnl)}
+            </p>
+            <p className="text-xs text-slate-400">Mark-to-market on open shares.</p>
+          </div>
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
+            <p className="text-xs uppercase tracking-wide text-slate-500">Net P&L</p>
+            <p className={`mt-2 text-2xl font-semibold ${totalNetPnl >= 0 ? "text-emerald-200" : "text-rose-200"}`}>
+              {totalNetPnl >= 0 ? "+" : ""}
+              {formatNeutrons(totalNetPnl)}
+            </p>
+            <p className="text-xs text-slate-400">Realized + Unrealized.</p>
           </div>
         </div>
 
@@ -128,9 +160,7 @@ export default async function PortfolioPage() {
                           : "—"}
                       </td>
                       <td className={`py-2 ${position.realized_pnl_neutrons >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
-                        {!isOpenLike
-                          ? `${position.realized_pnl_neutrons >= 0 ? "+" : ""}${formatNeutrons(position.realized_pnl_neutrons)}`
-                          : "—"}
+                        {`${position.realized_pnl_neutrons >= 0 ? "+" : ""}${formatNeutrons(position.realized_pnl_neutrons)}`}
                       </td>
                     </tr>
                   );
@@ -149,11 +179,15 @@ export default async function PortfolioPage() {
                 <tr>
                   <th className="py-2">Time</th>
                   <th className="py-2">Market</th>
+                  <th className="py-2">Side</th>
                   <th className="py-2">Outcome</th>
                   <th className="py-2">Final</th>
                   <th className="py-2">Result</th>
                   <th className="py-2">Qty</th>
-                  <th className="py-2">Cost</th>
+                  <th className="py-2">Avg Price</th>
+                  <th className="py-2">Amount</th>
+                  <th className="py-2">Cost Basis</th>
+                  <th className="py-2">Realized P&L</th>
                 </tr>
               </thead>
               <tbody>
@@ -181,17 +215,34 @@ export default async function PortfolioPage() {
                           {trade.market_title ?? trade.market_id.slice(0, 8)}
                         </Link>
                       </td>
+                      <td className="py-2">{trade.side}</td>
                       <td className="py-2">{trade.outcome}</td>
                       <td className="py-2">{final}</td>
                       <td className="py-2">{result}</td>
                       <td className="py-2">{trade.quantity}</td>
-                      <td className="py-2">{formatNeutrons(trade.cost_neutrons)}</td>
+                      <td className="py-2">{trade.quantity > 0 ? formatEstimatedNeutrons(trade.cost_neutrons / trade.quantity) : "—"}</td>
+                      <td className="py-2">
+                        {trade.side === "BUY" ? (
+                          <>Cost: {formatNeutrons(trade.cost_neutrons)}</>
+                        ) : (
+                          <>Proceeds: {formatNeutrons(trade.sell_proceeds_neutrons ?? trade.cost_neutrons)}</>
+                        )}
+                      </td>
+                      <td className="py-2">{trade.side === "SELL" ? formatNeutrons(trade.sell_cost_basis_neutrons ?? 0) : "—"}</td>
+                      <td className={`py-2 ${Number(trade.realized_pnl_neutrons ?? 0) >= 0 ? "text-emerald-300" : "text-rose-300"}`}>
+                        {trade.side === "SELL"
+                          ? `${Number(trade.realized_pnl_neutrons ?? 0) >= 0 ? "+" : ""}${formatNeutrons(Number(trade.realized_pnl_neutrons ?? 0))}`
+                          : "—"}
+                      </td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
+          <p className="text-xs text-slate-500">
+            Realized P&L is booked when you sell shares; unrealized P&L is mark-to-market on remaining open shares.
+          </p>
           {portfolio.trades.length === 0 ? <p className="text-sm text-slate-400">No trades yet.</p> : null}
         </section>
       </section>
