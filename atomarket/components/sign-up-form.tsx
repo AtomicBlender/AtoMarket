@@ -15,7 +15,6 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { validateUsername } from "@/lib/domain/validation";
 
 export function SignUpForm({
   className,
@@ -24,31 +23,9 @@ export function SignUpForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
-  const [username, setUsername] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [usernameAvailability, setUsernameAvailability] = useState<"unknown" | "checking" | "available" | "taken">(
-    "unknown",
-  );
   const router = useRouter();
-
-  async function checkUsernameAvailability(nextUsername: string) {
-    const supabase = createClient();
-    const normalized = nextUsername.trim().toLowerCase();
-    if (!normalized) {
-      setUsernameAvailability("unknown");
-      return;
-    }
-    setUsernameAvailability("checking");
-    const { data, error } = await supabase.rpc("is_username_available", {
-      p_username: normalized,
-    });
-    if (error) {
-      setUsernameAvailability("unknown");
-      return;
-    }
-    setUsernameAvailability(data ? "available" : "taken");
-  }
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,33 +39,13 @@ export function SignUpForm({
       return;
     }
 
-    let normalizedUsername = "";
     try {
-      normalizedUsername = validateUsername(username);
-    } catch (validationError) {
-      setError(validationError instanceof Error ? validationError.message : "Invalid username");
-      setIsLoading(false);
-      return;
-    }
-
-    const { data: isAvailable, error: availabilityError } = await supabase.rpc("is_username_available", {
-      p_username: normalizedUsername,
-    });
-    if (availabilityError || !isAvailable) {
-      setError("That username is already taken.");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? window.location.origin;
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: {
-            username: normalizedUsername,
-          },
-          emailRedirectTo: `${window.location.origin}/markets`,
+          emailRedirectTo: `${siteUrl}/markets`,
         },
       });
       if (error) throw error;
@@ -110,25 +67,6 @@ export function SignUpForm({
         <CardContent>
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="your_handle"
-                  required
-                  value={username}
-                  onChange={(e) => {
-                    const nextUsername = e.target.value;
-                    setUsername(nextUsername);
-                    void checkUsernameAvailability(nextUsername);
-                  }}
-                />
-                <p className="text-xs text-slate-500">3-24 chars: lowercase letters, numbers, underscores.</p>
-                {usernameAvailability === "checking" ? <p className="text-xs text-slate-400">Checking username...</p> : null}
-                {usernameAvailability === "available" ? <p className="text-xs text-emerald-300">Username is available.</p> : null}
-                {usernameAvailability === "taken" ? <p className="text-xs text-rose-300">Username is taken.</p> : null}
-              </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -165,7 +103,7 @@ export function SignUpForm({
                 />
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading || usernameAvailability === "taken"}>
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Creating an account..." : "Sign up"}
               </Button>
             </div>
