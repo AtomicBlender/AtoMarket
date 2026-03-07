@@ -8,12 +8,32 @@ const defaultUrl = process.env.VERCEL_URL
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "AtoMarket",
-  description: "A neutron-based prediction market MVP.",
+  description: "A nuclear energy prediction market.",
+  openGraph: {
+    type: "website",
+    url: "/",
+    title: "AtoMarket",
+    description: "A nuclear energy prediction market.",
+    siteName: "AtoMarket",
+    images: [
+      {
+        url: "/twitter-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "AtoMarket",
+      },
+    ],
+  },
   twitter: {
     card: "summary_large_image",
     title: "AtoMarket",
-    description: "A neutron-based prediction market MVP.",
-    images: ["/twitter-image.jpg"],
+    description: "A nuclear energy prediction market.",
+    images: [
+      {
+        url: "/twitter-image.jpg",
+        alt: "AtoMarket",
+      },
+    ],
   },
 };
 
