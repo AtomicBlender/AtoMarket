@@ -1,5 +1,6 @@
 import { createClient, createPublicClient } from "@/lib/supabase/server";
 import type {
+  ChallengeKind,
   LeaderboardEntry,
   Market,
   MarketPublicTrade,
@@ -15,7 +16,7 @@ import type {
 const PROFILE_COLUMNS = "id, display_name, username, is_admin, is_active, deactivated_at, neutron_balance, created_at";
 const MARKET_CARD_COLUMNS = "id, title, question, description, category, status, close_time, volume_neutrons, b, q_yes, q_no, created_at";
 const MARKET_DETAIL_COLUMNS =
-  "id, title, question, description, category, status, close_time, resolution_deadline, resolution_type, resolution_source, resolution_rule, challenge_window_hours, proposal_bond_neutrons, challenge_bond_neutrons, resolved_outcome, resolution_notes, resolved_at, invalid_reason, resolution_attempts, volume_neutrons, b, q_yes, q_no, created_by, created_at";
+  "id, title, question, description, category, status, close_time, resolution_deadline, resolution_type, resolution_source, resolution_rule, challenge_window_hours, proposal_bond_neutrons, challenge_bond_neutrons, resolved_outcome, resolution_notes, resolved_at, invalid_reason, resolution_attempts, volume_neutrons, b, q_yes, q_no, created_by, created_at, profiles!markets_created_by_fkey(display_name, username)";
 
 export async function getViewer() {
   const supabase = await createClient();
@@ -142,7 +143,26 @@ export async function getHomeLeaderboard(windowDays = 30, limit = 100): Promise<
 export async function getMarketById(marketId: string): Promise<Market | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("markets").select(MARKET_DETAIL_COLUMNS).eq("id", marketId).single();
-  return (data as Market | null) ?? null;
+  if (!data) return null;
+
+  const row = data as Market & {
+    profiles?: {
+      display_name?: string | null;
+      username?: string | null;
+    } | Array<{
+      display_name?: string | null;
+      username?: string | null;
+    }> | null;
+  };
+  const creatorProfile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+  const market = { ...row };
+  delete (market as { profiles?: unknown }).profiles;
+
+  return {
+    ...market,
+    creator_display_name: creatorProfile?.display_name?.trim() || null,
+    creator_username: creatorProfile?.username ?? null,
+  };
 }
 
 function downsampleHistory(points: ProbabilityHistoryPoint[], maxPoints: number): ProbabilityHistoryPoint[] {
@@ -315,7 +335,7 @@ export async function getMarketTimeline(marketId: string) {
     supabase
       .from("resolution_challenges")
       .select(
-        "id, proposal_id, market_id, challenged_by, challenge_outcome, evidence_url, evidence_note, bond_neutrons, created_at, profiles!resolution_challenges_challenged_by_fkey(display_name, username), resolution_proposals!resolution_challenges_proposal_id_fkey(status)",
+        "id, proposal_id, market_id, challenged_by, challenge_kind, challenge_outcome, evidence_url, evidence_note, bond_neutrons, created_at, profiles!resolution_challenges_challenged_by_fkey(display_name, username), resolution_proposals!resolution_challenges_proposal_id_fkey(status)",
       )
       .eq("market_id", marketId)
       .order("created_at", { ascending: false }),
@@ -346,10 +366,15 @@ export async function getMarketTimeline(marketId: string) {
       : challenge.resolution_proposals;
     return {
       ...challenge,
+      challenge_kind: (challenge.challenge_kind ?? "OPPOSITE_OUTCOME") as ChallengeKind,
       challenger_username: challengerProfile?.username ?? null,
       challenger_display_name:
         challengerProfile?.display_name ||
         (challenge.challenged_by ? `user_${String(challenge.challenged_by).slice(0, 8)}` : "Unknown user"),
+      challenge_label:
+        challenge.challenge_kind === "DISAGREE_NOT_RESOLVED"
+          ? "DISAGREE / NOT YET RESOLVED"
+          : challenge.challenge_outcome ?? "Opposite outcome",
       challenge_status:
         proposalRow?.status === "REJECTED"
           ? "REJECTED"
@@ -489,11 +514,24 @@ export async function getAdminDisputes() {
 
   const { data } = await supabase
     .from("resolution_proposals")
-    .select("id, market_id, proposed_outcome, challenge_deadline, status, created_at")
+    .select(
+      "id, market_id, proposed_outcome, challenge_deadline, status, created_at, resolution_challenges!resolution_challenges_proposal_id_fkey(challenge_kind, challenge_outcome, created_at)",
+    )
     .eq("status", "CHALLENGED")
     .order("created_at", { ascending: true });
 
-  return data ?? [];
+  return (data ?? []).map((row) => {
+    const challenge = Array.isArray(row.resolution_challenges) ? row.resolution_challenges[0] : row.resolution_challenges;
+    return {
+      ...row,
+      challenge_kind: (challenge?.challenge_kind ?? "OPPOSITE_OUTCOME") as ChallengeKind,
+      challenge_outcome: challenge?.challenge_outcome ?? null,
+      challenge_label:
+        challenge?.challenge_kind === "DISAGREE_NOT_RESOLVED"
+          ? "Premature / unsupported proposal dispute"
+          : `Outcome dispute: ${challenge?.challenge_outcome ?? "opposite"}`,
+    };
+  });
 }
 
 export async function getMarketBottomTabsData(

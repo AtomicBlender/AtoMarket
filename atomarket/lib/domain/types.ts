@@ -11,6 +11,7 @@ export type ResolutionType =
   | "MANUAL_WITH_BOND";
 
 export type OutcomeType = "YES" | "NO";
+export type ChallengeKind = "OPPOSITE_OUTCOME" | "DISAGREE_NOT_RESOLVED";
 
 export type ProposalStatus = "ACTIVE" | "CHALLENGED" | "FINALIZED" | "REJECTED";
 
@@ -46,6 +47,8 @@ export interface Market {
   q_yes: number;
   q_no: number;
   created_by: string;
+  creator_username?: string | null;
+  creator_display_name?: string | null;
   created_at: string;
 }
 
@@ -147,5 +150,18 @@ export interface MarketPublicTrade {
   sell_proceeds_neutrons?: number | null;
   price_before: number;
   price_after: number;
+  created_at: string;
+}
+
+export interface ResolutionChallenge {
+  id: string;
+  proposal_id: string;
+  market_id: string;
+  challenged_by: string;
+  challenge_kind: ChallengeKind;
+  challenge_outcome: OutcomeType | null;
+  evidence_url: string | null;
+  evidence_note: string | null;
+  bond_neutrons: number;
   created_at: string;
 }

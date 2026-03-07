@@ -8,7 +8,7 @@ import {
   challengeResolutionAction,
   proposeResolutionAction,
 } from "@/lib/actions/market";
-import type { Market } from "@/lib/domain/types";
+import type { ChallengeKind, Market } from "@/lib/domain/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatNeutrons } from "@/lib/domain/format";
@@ -31,6 +31,7 @@ export function ResolutionControls({
   const [feedback, setFeedback] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [pending, setPending] = useState(false);
   const [confirmAcknowledged, setConfirmAcknowledged] = useState(false);
+  const [challengeKind, setChallengeKind] = useState<ChallengeKind>("DISAGREE_NOT_RESOLVED");
   const [confirmState, setConfirmState] = useState<
     | {
         type: "proposal" | "challenge";
@@ -136,6 +137,10 @@ export function ResolutionControls({
   const oppositeChallengeOutcome = activeProposalOutcome === "YES" ? "NO" : "YES";
   const showChallengeForm = hasActiveProposal && !deadlinePassed && !isFinalized;
   const challengeBlocked = blocked || pending || !showChallengeForm;
+  const challengeHelperText =
+    challengeKind === "DISAGREE_NOT_RESOLVED"
+      ? "Use this when the proposal is premature, unsupported, or the stated conditions are not yet met."
+      : `This challenge asserts the opposite final outcome: ${oppositeChallengeOutcome}.`;
 
   return (
     <div className="space-y-4 rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
@@ -243,21 +248,34 @@ export function ResolutionControls({
 
               <div>
                 <p className="text-xs uppercase tracking-wide text-slate-500">Challenge Active Proposal</p>
-                <p className="mt-1 text-xs text-slate-500">Provide concise counter-evidence for the opposite outcome.</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Challenge either by asserting the opposite outcome or by arguing the proposal is premature or unsupported.
+                </p>
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs text-slate-400" htmlFor="challenge_outcome">
-                  Challenge outcome
+                <label className="text-xs text-slate-400" htmlFor="challenge_kind">
+                  Challenge type
                 </label>
-                <input type="hidden" name="challenge_outcome" value={oppositeChallengeOutcome} />
-                <div
-                  id="challenge_outcome"
-                  className="h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 text-sm leading-10 text-slate-100"
+                <select
+                  id="challenge_kind"
+                  name="challenge_kind"
+                  value={challengeKind}
+                  onChange={(event) => setChallengeKind(event.target.value as ChallengeKind)}
+                  disabled={challengeBlocked}
+                  className="h-10 w-full rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
                 >
-                  Challenge with {oppositeChallengeOutcome}
-                </div>
+                  <option value="DISAGREE_NOT_RESOLVED">Disagree / conditions not met yet</option>
+                  <option value="OPPOSITE_OUTCOME">Opposite outcome</option>
+                </select>
+                <p className="text-xs text-slate-500">{challengeHelperText}</p>
               </div>
+
+              <input
+                type="hidden"
+                name="challenge_outcome"
+                value={challengeKind === "OPPOSITE_OUTCOME" ? oppositeChallengeOutcome : ""}
+              />
 
               <div className="space-y-1">
                 <label className="text-xs text-slate-400" htmlFor="challenge_evidence_url">
@@ -280,7 +298,11 @@ export function ResolutionControls({
                   id="challenge_evidence_note"
                   name="evidence_note"
                   rows={3}
-                  placeholder="Explain why the active proposal is incorrect."
+                  placeholder={
+                    challengeKind === "DISAGREE_NOT_RESOLVED"
+                      ? "Explain why the proposal is premature, unsupported, or does not yet meet the stated conditions."
+                      : "Explain why the active proposal is incorrect and why the opposite outcome is better supported."
+                  }
                   disabled={challengeBlocked}
                   className="w-full rounded-md border border-slate-700 bg-slate-950 p-2 text-sm text-slate-100"
                 />

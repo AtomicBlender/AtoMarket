@@ -51,6 +51,7 @@ export default async function AdminPage() {
             <p className="text-sm text-slate-300">
               Proposal outcome: {dispute.proposed_outcome} | Challenge deadline: {formatDateTime(dispute.challenge_deadline)}
             </p>
+            <p className="text-sm text-slate-400">{dispute.challenge_label}</p>
             <Link href={`/markets/${dispute.market_id}`} className="text-sm text-emerald-300 hover:text-emerald-200">
               Open market detail
             </Link>

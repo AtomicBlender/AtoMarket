@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { attemptAutoResolveMarket } from "@/lib/domain/resolution";
 import { validateCreateMarketInput, validateProposalEligibility } from "@/lib/domain/validation";
+import type { ChallengeKind, OutcomeType } from "@/lib/domain/types";
 import { createClient } from "@/lib/supabase/server";
 
 type ActionResult = {
@@ -23,6 +24,14 @@ function toTradeMessage(raw: string): string {
   if (raw.includes("invalid_trade_cost")) return "Invalid buy cost for this trade.";
   if (raw.includes("invalid_trade_credit")) return "Invalid sell credit for this trade.";
   return raw;
+}
+
+function isOutcome(value: string): value is OutcomeType {
+  return value === "YES" || value === "NO";
+}
+
+function isChallengeKind(value: string): value is ChallengeKind {
+  return value === "OPPOSITE_OUTCOME" || value === "DISAGREE_NOT_RESOLVED";
 }
 
 export async function createMarketAction(formData: FormData): Promise<ActionResult> {
@@ -213,9 +222,15 @@ export async function challengeResolutionAction(formData: FormData): Promise<Act
 
     const proposalId = String(formData.get("proposal_id") ?? "");
     const marketId = String(formData.get("market_id") ?? "");
-    const challengeOutcome = String(formData.get("challenge_outcome") ?? "NO");
+    const challengeKindRaw = String(formData.get("challenge_kind") ?? "OPPOSITE_OUTCOME");
+    const challengeOutcomeRaw = String(formData.get("challenge_outcome") ?? "");
     const evidenceUrl = String(formData.get("evidence_url") ?? "");
     const evidenceNote = String(formData.get("evidence_note") ?? "");
+    if (!isChallengeKind(challengeKindRaw)) {
+      return { ok: false, message: "Invalid challenge type." };
+    }
+
+    const challengeKind = challengeKindRaw;
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -236,8 +251,16 @@ export async function challengeResolutionAction(formData: FormData): Promise<Act
     if (new Date(proposal.challenge_deadline).getTime() <= Date.now()) {
       return { ok: false, message: "Challenge window closed." };
     }
-    if (challengeOutcome === proposal.proposed_outcome) {
-      return { ok: false, message: "Challenge outcome must be opposite of the proposed outcome." };
+
+    let challengeOutcome: OutcomeType | null = null;
+    if (challengeKind === "OPPOSITE_OUTCOME") {
+      if (!isOutcome(challengeOutcomeRaw)) {
+        return { ok: false, message: "Invalid challenge outcome." };
+      }
+      if (challengeOutcomeRaw === proposal.proposed_outcome) {
+        return { ok: false, message: "Challenge outcome must be opposite of the proposed outcome." };
+      }
+      challengeOutcome = challengeOutcomeRaw;
     }
 
     const { data: existingChallenge } = await supabase
@@ -273,6 +296,7 @@ export async function challengeResolutionAction(formData: FormData): Promise<Act
       proposal_id: proposal.id,
       market_id: proposal.market_id,
       challenged_by: authData.user.id,
+      challenge_kind: challengeKind,
       challenge_outcome: challengeOutcome,
       evidence_url: evidenceUrl || null,
       evidence_note: evidenceNote || null,
@@ -297,7 +321,13 @@ export async function challengeResolutionAction(formData: FormData): Promise<Act
     revalidatePath("/portfolio");
     revalidatePath("/admin");
 
-    return { ok: true, message: "Challenge submitted." };
+    return {
+      ok: true,
+      message:
+        challengeKind === "DISAGREE_NOT_RESOLVED"
+          ? "Disagreement challenge submitted."
+          : "Opposite-outcome challenge submitted.",
+    };
   } catch (error) {
     return { ok: false, message: toErrorMessage(error) };
   }

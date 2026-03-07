@@ -106,6 +106,7 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
   const viewerUnrealized =
     viewerPosition != null && viewerMarkValue != null ? viewerMarkValue - viewerPosition.net_spent_neutrons : null;
   const tradingDisabled = market.status !== "OPEN" || new Date(market.close_time).getTime() <= Date.now();
+  const creatorLabel = market.creator_display_name || market.creator_username || `user_${market.created_by.slice(0, 8)}`;
 
   return (
     <main>
@@ -121,7 +122,19 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
               <span className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300">{market.category ?? "General"}</span>
             </div>
 
-            <h1 className="text-2xl font-semibold text-slate-100">{market.title}</h1>
+            <div className="space-y-1">
+              <h1 className="text-2xl font-semibold text-slate-100">{market.title}</h1>
+              <p className="text-xs text-slate-500">
+                Created by{" "}
+                {market.creator_username ? (
+                  <Link href={`/u/${market.creator_username}`} className="text-emerald-300 hover:text-emerald-200">
+                    {creatorLabel}
+                  </Link>
+                ) : (
+                  <span className="text-slate-300">{creatorLabel}</span>
+                )}
+              </p>
+            </div>
             <p className="text-slate-300">{market.question}</p>
             {market.description ? <p className="text-sm text-slate-400">{market.description}</p> : null}
             {market.status === "RESOLVED" ? (
@@ -218,7 +231,7 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
                   return (
                     <div key={event.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-sm text-slate-300">
                       <div className="font-medium text-slate-100">
-                        Challenge {challenge.challenge_outcome} ({challenge.challenge_status})
+                        Challenge {challenge.challenge_label} ({challenge.challenge_status})
                       </div>
                       <div className="mt-1 text-xs text-slate-400">At: {formatDateTime(challenge.created_at)}</div>
                       <div className="mt-1 text-xs text-slate-400">
