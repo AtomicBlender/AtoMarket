@@ -18,6 +18,8 @@ export interface CreateMarketInput {
 export function validateCreateMarketInput(input: CreateMarketInput) {
   if (!input.title.trim()) throw new Error("Title is required.");
   if (!input.question.trim()) throw new Error("Question is required.");
+  if (!input.description?.trim()) throw new Error("Description is required.");
+  if (!input.category?.trim()) throw new Error("Category is required.");
   if (!input.resolution_source.trim()) throw new Error("Resolution source is required.");
   if (!input.evidence_requirements.trim()) throw new Error("Evidence requirements are required.");
 
@@ -34,18 +36,28 @@ export function validateCreateMarketInput(input: CreateMarketInput) {
     throw new Error("New markets currently support only MANUAL_WITH_BOND resolution.");
   }
 
+  if (!Number.isFinite(input.challenge_window_hours) || (input.challenge_window_hours ?? 0) <= 0) {
+    throw new Error("Challenge window must be greater than zero.");
+  }
+  if (!Number.isFinite(input.proposal_bond_neutrons) || (input.proposal_bond_neutrons ?? 0) <= 0) {
+    throw new Error("Proposal bond must be greater than zero.");
+  }
+  if (!Number.isFinite(input.challenge_bond_neutrons) || (input.challenge_bond_neutrons ?? 0) <= 0) {
+    throw new Error("Challenge bond must be greater than zero.");
+  }
+
   return {
     title: input.title.trim(),
     question: input.question.trim(),
-    description: input.description?.trim() || null,
-    category: input.category?.trim() || null,
+    description: input.description.trim(),
+    category: input.category.trim(),
     close_time: input.close_time,
     resolution_deadline: input.resolution_deadline,
     resolution_type: input.resolution_type,
     resolution_source: input.resolution_source.trim(),
-    challenge_window_hours: input.challenge_window_hours ?? 48,
-    proposal_bond_neutrons: input.proposal_bond_neutrons ?? 500,
-    challenge_bond_neutrons: input.challenge_bond_neutrons ?? 500,
+    challenge_window_hours: input.challenge_window_hours,
+    proposal_bond_neutrons: input.proposal_bond_neutrons,
+    challenge_bond_neutrons: input.challenge_bond_neutrons,
     resolution_rule: {
       evidence_requirements: input.evidence_requirements.trim(),
     },

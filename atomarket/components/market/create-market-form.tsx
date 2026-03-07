@@ -81,10 +81,11 @@ export function CreateMarketForm() {
               id="description"
               name="description"
               rows={3}
-              placeholder="Add context: what event is being tracked, how users should interpret the question, and any key assumptions."
+              required
+              placeholder="Specific information on how the market will be resolved. E.g., 'Resolves to YES if Utility X announces an SMR pilot site by August 2026, and NO if they do not.' Add context: what event is being tracked, how users should interpret the question, and any key assumptions."
               className="rounded-md border border-slate-700 bg-slate-950 p-3 text-sm text-slate-100"
             />
-            <p className="text-xs text-slate-500">Optional details to help traders understand the market context.</p>
+            <p className="text-xs text-slate-500">Details to help traders understand the market context and how it will be resolved.</p>
           </div>
 
           <div className="grid gap-2">
@@ -92,6 +93,7 @@ export function CreateMarketForm() {
             <Input
               id="category"
               name="category"
+              required
               placeholder="Regulation"
               className="h-11 border-slate-700 bg-slate-950 text-slate-100"
             />
@@ -162,6 +164,7 @@ export function CreateMarketForm() {
               id="evidence_requirements"
               name="evidence_requirements"
               rows={4}
+              required
               placeholder="Example: Include official announcement URL and the exact sentence proving the outcome."
               className="rounded-md border border-slate-700 bg-slate-950 p-3 text-sm text-slate-100"
             />
@@ -184,6 +187,8 @@ export function CreateMarketForm() {
               id="challenge_window_hours"
               name="challenge_window_hours"
               type="number"
+              required
+              min={1}
               defaultValue={48}
               className="h-11 border-slate-700 bg-slate-950 text-slate-100"
             />
@@ -195,6 +200,8 @@ export function CreateMarketForm() {
               id="proposal_bond_neutrons"
               name="proposal_bond_neutrons"
               type="number"
+              required
+              min={1}
               defaultValue={500}
               className="h-11 border-slate-700 bg-slate-950 text-slate-100"
             />
@@ -206,6 +213,8 @@ export function CreateMarketForm() {
               id="challenge_bond_neutrons"
               name="challenge_bond_neutrons"
               type="number"
+              required
+              min={1}
               defaultValue={500}
               className="h-11 border-slate-700 bg-slate-950 text-slate-100"
             />

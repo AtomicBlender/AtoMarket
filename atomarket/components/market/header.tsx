@@ -1,8 +1,10 @@
+import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { AuthCTAButtons } from "@/components/market/auth-cta-buttons";
 import { LogoutButton } from "@/components/logout-button";
 import { formatNeutrons } from "@/lib/domain/format";
+import atoMarketLogo from "@/app/AtoMarket Logo 512 Transparent.png";
 
 const navItems = [
   { href: "/markets", label: "Markets" },
@@ -32,8 +34,16 @@ export async function MarketHeader({ includeViewer = true }: { includeViewer?: b
     <header className="sticky top-0 z-30 border-b border-emerald-500/20 bg-slate-950/90 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div className="flex items-center gap-6">
-          <Link href="/" className="text-lg font-semibold tracking-tight text-emerald-300">
-            AtoMarket
+          <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-emerald-300">
+            <Image
+              src={atoMarketLogo}
+              alt="AtoMarket logo"
+              width={28}
+              height={28}
+              className="h-7 w-7"
+              priority
+            />
+            <span>AtoMarket</span>
           </Link>
           <nav className="flex flex-wrap items-center gap-2 text-sm text-slate-300">
             {navItems.map((item) => (

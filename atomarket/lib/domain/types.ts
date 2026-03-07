@@ -165,3 +165,75 @@ export interface ResolutionChallenge {
   bond_neutrons: number;
   created_at: string;
 }
+
+export interface AdminOverviewStats {
+  total_users: number;
+  active_users_7d: number;
+  active_users_30d: number;
+  total_markets: number;
+  open_markets: number;
+  resolving_markets: number;
+  resolved_markets: number;
+  invalid_markets: number;
+  open_disputes: number;
+  markets_nearing_deadline: number;
+  overdue_unresolved_markets: number;
+  total_volume_neutrons: number;
+}
+
+export interface AdminMarketRow {
+  id: string;
+  title: string;
+  category: string | null;
+  status: MarketStatus;
+  created_at: string;
+  close_time: string;
+  resolution_deadline: string;
+  volume_neutrons: number;
+  resolution_attempts: number;
+  creator_username: string | null;
+  creator_display_name: string | null;
+  has_active_proposal: boolean;
+  has_challenge: boolean;
+  proposal_status: ProposalStatus | null;
+  challenge_kind: ChallengeKind | null;
+  total_count?: number;
+}
+
+export interface AdminUserRow {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  is_active: boolean;
+  is_admin: boolean;
+  created_at: string;
+  neutron_balance: number;
+  trades_count: number;
+  created_markets_count: number;
+  open_positions_count: number;
+  last_trade_at: string | null;
+  total_count?: number;
+}
+
+export interface AdminActionLog {
+  id: string;
+  market_id: string;
+  action_type: "DEFER" | "RESOLVE" | "INVALIDATE";
+  note: string | null;
+  created_at: string;
+  admin_username: string | null;
+  admin_display_name: string | null;
+  market_title: string | null;
+}
+
+export interface AdminDispute {
+  id: string;
+  market_id: string;
+  proposed_outcome: OutcomeType;
+  challenge_deadline: string;
+  status: ProposalStatus;
+  created_at: string;
+  challenge_kind: ChallengeKind;
+  challenge_outcome: OutcomeType | null;
+  challenge_label: string;
+}

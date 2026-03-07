@@ -1,5 +1,10 @@
 import { createClient, createPublicClient } from "@/lib/supabase/server";
 import type {
+  AdminActionLog,
+  AdminDispute,
+  AdminMarketRow,
+  AdminOverviewStats,
+  AdminUserRow,
   ChallengeKind,
   LeaderboardEntry,
   Market,
@@ -509,16 +514,125 @@ export async function getPublicPortfolioByUsername(username: string): Promise<{
   };
 }
 
-export async function getAdminDisputes() {
+export async function getAdminOverview(): Promise<AdminOverviewStats | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_get_overview");
+  if (error) {
+    throw new Error(`admin_get_overview failed: ${error.message}`);
+  }
+  const rows = (data as AdminOverviewStats[] | null) ?? [];
+  return rows[0] ?? null;
+}
+
+export async function getAdminMarkets(
+  filters: { status?: string; attention?: string; category?: string; search?: string },
+  limit = 25,
+  offset = 0,
+): Promise<{ markets: AdminMarketRow[]; totalCount: number }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_get_markets", {
+    p_status: filters.status ?? "ALL",
+    p_attention: filters.attention ?? "ALL",
+    p_category: filters.category ?? null,
+    p_search: filters.search ?? null,
+    p_limit: limit,
+    p_offset: offset,
+  });
+  if (error) {
+    throw new Error(`admin_get_markets failed: ${error.message}`);
+  }
+
+  const rows = (data as Array<AdminMarketRow & { total_count: number }> | null) ?? [];
+  const totalCount = rows[0]?.total_count ?? 0;
+  const markets = rows as unknown as AdminMarketRow[];
+  return { markets, totalCount };
+}
+
+export async function getAdminUsers(
+  filters: { search?: string; role?: string; state?: string; activity?: string },
+  limit = 25,
+  offset = 0,
+): Promise<{ users: AdminUserRow[]; totalCount: number }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_get_users", {
+    p_search: filters.search ?? null,
+    p_role: filters.role ?? "ALL",
+    p_state: filters.state ?? "ALL",
+    p_activity: filters.activity ?? "ALL",
+    p_limit: limit,
+    p_offset: offset,
+  });
+  if (error) {
+    throw new Error(`admin_get_users failed: ${error.message}`);
+  }
+
+  const rows = (data as Array<AdminUserRow & { total_count: number }> | null) ?? [];
+  const totalCount = rows[0]?.total_count ?? 0;
+  const users = rows as unknown as AdminUserRow[];
+  return { users, totalCount };
+}
+
+export async function getAdminRecentActions(limit = 8): Promise<AdminActionLog[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("resolution_admin_actions")
+    .select(
+      "id, market_id, action_type, note, created_at, markets(title), profiles!resolution_admin_actions_admin_user_id_fkey(display_name, username)",
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) {
+    throw new Error(`admin recent actions query failed: ${error.message}`);
+  }
+
+  return ((data ?? []) as Array<
+    AdminActionLog & {
+      markets?:
+        | { title?: string | null }
+        | Array<{
+            title?: string | null;
+          }>
+        | null;
+      profiles?:
+        | {
+            display_name?: string | null;
+            username?: string | null;
+          }
+        | Array<{
+            display_name?: string | null;
+            username?: string | null;
+          }>
+        | null;
+    }
+  >).map((action) => {
+    const adminProfile = Array.isArray(action.profiles) ? action.profiles[0] : action.profiles;
+    const marketRow = Array.isArray(action.markets) ? action.markets[0] : action.markets;
+    return {
+      id: action.id,
+      market_id: action.market_id,
+      action_type: action.action_type,
+      note: action.note,
+      created_at: action.created_at,
+      admin_username: adminProfile?.username ?? null,
+      admin_display_name: adminProfile?.display_name || adminProfile?.username || "Unknown admin",
+      market_title: marketRow?.title ?? null,
+    };
+  });
+}
+
+export async function getAdminDisputes(): Promise<AdminDispute[]> {
   const supabase = await createClient();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("resolution_proposals")
     .select(
       "id, market_id, proposed_outcome, challenge_deadline, status, created_at, resolution_challenges!resolution_challenges_proposal_id_fkey(challenge_kind, challenge_outcome, created_at)",
     )
     .eq("status", "CHALLENGED")
     .order("created_at", { ascending: true });
+  if (error) {
+    throw new Error(`admin disputes query failed: ${error.message}`);
+  }
 
   return (data ?? []).map((row) => {
     const challenge = Array.isArray(row.resolution_challenges) ? row.resolution_challenges[0] : row.resolution_challenges;

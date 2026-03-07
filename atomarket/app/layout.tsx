@@ -9,6 +9,12 @@ export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "AtoMarket",
   description: "A neutron-based prediction market MVP.",
+  twitter: {
+    card: "summary_large_image",
+    title: "AtoMarket",
+    description: "A neutron-based prediction market MVP.",
+    images: ["/twitter-image.jpg"],
+  },
 };
 
 export default function RootLayout({
