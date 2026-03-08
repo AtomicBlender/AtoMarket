@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { CheckCircle2, MinusCircle, RotateCcw, XCircle } from "lucide-react";
 import { formatDateTime, formatNeutrons } from "@/lib/domain/format";
 import { yesPrice } from "@/lib/domain/lmsr";
 import type { MarketStatus, OutcomeType, Position, Trade } from "@/lib/domain/types";
@@ -83,6 +84,36 @@ function pnlClass(value: number | null | undefined): string {
   return "text-rose-300";
 }
 
+function getClosedResultPresentation(result: ClosedResult) {
+  switch (result) {
+    case "WON":
+      return {
+        label: "Won",
+        className: "bg-emerald-500/12 text-emerald-300",
+        icon: CheckCircle2,
+      };
+    case "LOST":
+      return {
+        label: "Lost",
+        className: "bg-rose-500/12 text-rose-300",
+        icon: XCircle,
+      };
+    case "REFUNDED":
+      return {
+        label: "Refunded",
+        className: "bg-sky-500/12 text-sky-300",
+        icon: RotateCcw,
+      };
+    case "PUSH":
+    default:
+      return {
+        label: "Push",
+        className: "bg-slate-700/60 text-slate-300",
+        icon: MinusCircle,
+      };
+  }
+}
+
 function buildMarketSnapshotMap(positions: Position[], trades: Trade[]): Map<string, MarketSnapshot> {
   const markets = new Map<string, MarketSnapshot>();
 
@@ -124,7 +155,7 @@ function deriveActiveOutcomeRows(positions: Position[]): PositionOutcomeRow[] {
 
   for (const position of positions) {
     const status = position.market_status;
-    const isActive = status === "OPEN" || status === "CLOSED" || status === "RESOLVING";
+    const isActive = status === "OPEN" || status === "RESOLVING";
     if (!isActive) continue;
 
     const hasPricing =
@@ -150,7 +181,7 @@ function deriveActiveOutcomeRows(positions: Position[]): PositionOutcomeRow[] {
         id: `${position.id}-${outcome}`,
         marketId: position.market_id,
         marketTitle: position.market_title ?? position.market_id.slice(0, 8),
-        marketStatus: position.market_status,
+        marketStatus: status,
         outcome,
         shares,
         avgCostPerShare: shares > 0 ? outcomeCost / shares : null,
@@ -276,9 +307,8 @@ function deriveClosedOutcomeRows(positions: Position[], trades: Trade[]): Closed
 
 function getPositionMetrics(position: Position) {
   const isOpenLike =
-    position.market_status === "OPEN" ||
-    position.market_status === "CLOSED" ||
-    position.market_status === "RESOLVING";
+    position.market_status != null &&
+    ["OPEN", "RESOLVING"].includes(position.market_status);
   const hasPricing =
     typeof position.market_q_yes === "number" &&
     typeof position.market_q_no === "number" &&
@@ -523,65 +553,65 @@ export function PortfolioView({
                   <span className="text-right">Gain/Loss</span>
                 </div>
                 {closedOutcomeRows.map((row, index) => (
-                  <div
-                    key={row.id}
-                    className={`px-4 py-4 text-sm text-slate-200 md:px-6 md:py-5 ${index > 0 ? "border-t border-slate-800/55" : ""}`}
-                  >
-                    <div className="grid gap-3 md:grid-cols-[0.7fr_minmax(0,1.4fr)_0.8fr_0.8fr_0.9fr] md:items-center">
-                      <div>
-                        <span
-                          className={`inline-flex rounded-full px-2 py-1 text-[10px] font-medium ${
-                            row.result === "WON"
-                              ? "bg-emerald-500/12 text-emerald-300"
-                              : row.result === "LOST"
-                                ? "bg-rose-500/12 text-rose-300"
-                                : row.result === "REFUNDED"
-                                  ? "bg-sky-500/12 text-sky-300"
-                                  : "bg-slate-700/60 text-slate-300"
-                          }`}
-                        >
-                          {row.result}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <Link
-                          href={`/markets/${row.marketId}`}
-                          className="truncate font-medium leading-tight text-emerald-300 hover:text-emerald-200"
-                          style={{ fontSize: "clamp(1rem, 1vw, 1.12rem)" }}
-                        >
-                          {row.marketTitle}
-                        </Link>
-                        <p className="mt-0.5 text-xs text-slate-400">
-                          <span
-                            className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
-                              row.outcome === "YES"
-                                ? "bg-emerald-500/12 text-emerald-300"
-                                : "bg-rose-500/12 text-rose-300"
-                            }`}
-                          >
-                            {row.outcome}
-                          </span>{" "}
-                          · {formatEstimatedNeutrons(row.shares)} shares @ {formatPrice(row.avgCostPerShare)} avg
-                        </p>
-                        <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-400 md:hidden">
-                          <p>Total cost {formatNeutrons(row.totalCostNeutrons)}</p>
-                          <p>Amount won {formatNeutrons(row.amountWonNeutrons)}</p>
-                          <p className={pnlClass(row.gainLossAbsNeutrons)}>
-                            Gain/Loss {formatSignedNeutrons(row.gainLossAbsNeutrons)} ({formatSignedPercent(row.gainLossPct)})
-                          </p>
+                  (() => {
+                    const presentation = getClosedResultPresentation(row.result);
+                    const ResultIcon = presentation.icon;
+
+                    return (
+                      <div
+                        key={row.id}
+                        className={`px-4 py-4 text-sm text-slate-200 md:px-6 md:py-5 ${index > 0 ? "border-t border-slate-800/55" : ""}`}
+                      >
+                        <div className="grid gap-3 md:grid-cols-[0.7fr_minmax(0,1.4fr)_0.8fr_0.8fr_0.9fr] md:items-center">
+                          <div>
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${presentation.className}`}
+                            >
+                              <ResultIcon className="h-4 w-4" aria-hidden="true" />
+                              {presentation.label}
+                            </span>
+                          </div>
+                          <div className="min-w-0">
+                            <Link
+                              href={`/markets/${row.marketId}`}
+                              className="truncate font-medium leading-tight text-emerald-300 hover:text-emerald-200"
+                              style={{ fontSize: "clamp(1rem, 1vw, 1.12rem)" }}
+                            >
+                              {row.marketTitle}
+                            </Link>
+                            <p className="mt-0.5 text-xs text-slate-400">
+                              <span
+                                className={`inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
+                                  row.outcome === "YES"
+                                    ? "bg-emerald-500/12 text-emerald-300"
+                                    : "bg-rose-500/12 text-rose-300"
+                                }`}
+                              >
+                                {row.outcome}
+                              </span>{" "}
+                              · {formatEstimatedNeutrons(row.shares)} shares @ {formatPrice(row.avgCostPerShare)} avg
+                            </p>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-slate-400 md:hidden">
+                              <p>Total cost {formatNeutrons(row.totalCostNeutrons)}</p>
+                              <p>Amount won {formatNeutrons(row.amountWonNeutrons)}</p>
+                              <p className={pnlClass(row.gainLossAbsNeutrons)}>
+                                Gain/Loss {formatSignedNeutrons(row.gainLossAbsNeutrons)} ({formatSignedPercent(row.gainLossPct)})
+                              </p>
+                            </div>
+                          </div>
+                          <div className="hidden text-right text-sm text-slate-300 md:block tabular-nums">
+                            {formatNeutrons(row.totalCostNeutrons)}
+                          </div>
+                          <div className="hidden text-right text-sm text-slate-300 md:block tabular-nums">
+                            {formatNeutrons(row.amountWonNeutrons)}
+                          </div>
+                          <div className={`hidden text-right text-sm md:block tabular-nums ${pnlClass(row.gainLossAbsNeutrons)}`}>
+                            {formatSignedNeutrons(row.gainLossAbsNeutrons)} ({formatSignedPercent(row.gainLossPct)})
+                          </div>
                         </div>
                       </div>
-                      <div className="hidden text-right text-sm text-slate-300 md:block tabular-nums">
-                        {formatNeutrons(row.totalCostNeutrons)}
-                      </div>
-                      <div className="hidden text-right text-sm text-slate-300 md:block tabular-nums">
-                        {formatNeutrons(row.amountWonNeutrons)}
-                      </div>
-                      <div className={`hidden text-right text-sm md:block tabular-nums ${pnlClass(row.gainLossAbsNeutrons)}`}>
-                        {formatSignedNeutrons(row.gainLossAbsNeutrons)} ({formatSignedPercent(row.gainLossPct)})
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()
                 ))}
                 {closedOutcomeRows.length === 0 ? <p className="px-4 py-4 text-sm text-slate-400">No closed positions.</p> : null}
               </div>

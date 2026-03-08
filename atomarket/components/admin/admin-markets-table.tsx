@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { formatDateTime, formatNeutrons } from "@/lib/domain/format";
+import { getMarketStateView } from "@/lib/domain/market-status";
 import type { AdminMarketRow } from "@/lib/domain/types";
+import { LifecycleBadge, TradingPhaseBadge } from "@/components/market/status-badge";
 
 function creatorLabel(row: AdminMarketRow): string {
   return row.creator_display_name?.trim() || row.creator_username || `user_${row.id.slice(0, 8)}`;
@@ -9,12 +11,13 @@ function creatorLabel(row: AdminMarketRow): string {
 function attentionLabel(row: AdminMarketRow): string {
   const now = Date.now();
   const deadlineMs = new Date(row.resolution_deadline).getTime();
+  const state = getMarketStateView(row, now);
   if (row.has_challenge) return "Challenged";
-  if ((row.status === "OPEN" || row.status === "CLOSED" || row.status === "RESOLVING") && new Date(row.close_time).getTime() < now) {
+  if (!state.isFinalized && state.isPostClose) {
     return "Past close";
   }
   if (row.has_active_proposal) return "Active proposal";
-  if ((row.status === "OPEN" || row.status === "CLOSED" || row.status === "RESOLVING") && deadlineMs >= now && deadlineMs <= now + 24 * 60 * 60 * 1000) {
+  if (!state.isFinalized && deadlineMs >= now && deadlineMs <= now + 24 * 60 * 60 * 1000) {
     return "Watching deadline";
   }
   return "Stable";
@@ -47,9 +50,10 @@ export function AdminMarketsTable({
                   {market.title}
                 </Link>
                 <p className="mt-1 text-xs text-slate-500">
-                  {market.category ?? "General"} · {market.status.replaceAll("_", " ")} · by {creatorLabel(market)}
+                  {market.category ?? "General"} · by {creatorLabel(market)}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                  <LifecycleAndTradingBadges market={market} />
                   {market.has_challenge ? (
                     <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-amber-200">Challenge</span>
                   ) : null}
@@ -82,5 +86,17 @@ export function AdminMarketsTable({
         </div>
       )}
     </section>
+  );
+}
+
+function LifecycleAndTradingBadges({ market }: { market: AdminMarketRow }) {
+  const state = getMarketStateView(market);
+  return (
+    <>
+      <LifecycleBadge status={state.lifecycleStatus} label={state.displayLifecycleLabel} />
+      {state.showTradingPhaseBadge && state.displayTradingLabel ? (
+        <TradingPhaseBadge phase={state.tradingPhase} label={state.displayTradingLabel} />
+      ) : null}
+    </>
   );
 }

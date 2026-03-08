@@ -19,6 +19,7 @@ interface HomePageProps {
 
 export default async function Home({ searchParams }: HomePageProps) {
   const params = await searchParams;
+  const renderedAtTs = new Date().toISOString();
   const requestedCount = Number(params?.all_count ?? HOME_MARKETS_CHUNK);
   const allCount = Number.isFinite(requestedCount)
     ? Math.min(HOME_MARKETS_MAX, Math.max(HOME_MARKETS_CHUNK, Math.floor(requestedCount)))
@@ -27,7 +28,7 @@ export default async function Home({ searchParams }: HomePageProps) {
   const [{ popularMarkets, totalMarkets, openCount }, leaderboard, allMarketsFeed] = await Promise.all([
     getHomePageMarkets(),
     getHomeLeaderboard(30, 25),
-    getMarketsFeed({ status: "ALL" }, allCount, 0),
+    getMarketsFeed({ lifecycle: "ALL" }, allCount, 0),
   ]);
   const allMarkets = allMarketsFeed.markets;
   const allMarketsTotal = allMarketsFeed.totalCount;
@@ -65,6 +66,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                 markets={popularMarkets}
                 historyByMarket={popularHistoryByMarket}
                 fallbackProbabilityByMarket={fallbackProbabilityByMarket}
+                renderedAtTs={renderedAtTs}
               />
             ) : (
               <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 text-sm text-slate-400">

@@ -1,4 +1,5 @@
 import { createClient, createPublicClient } from "@/lib/supabase/server";
+import { getEffectiveMarketStatus } from "@/lib/domain/market-status";
 import type {
   AdminActionLog,
   AdminDispute,
@@ -22,6 +23,13 @@ const PROFILE_COLUMNS = "id, display_name, username, is_admin, is_active, deacti
 const MARKET_CARD_COLUMNS = "id, title, question, description, category, status, close_time, volume_neutrons, b, q_yes, q_no, created_at";
 const MARKET_DETAIL_COLUMNS =
   "id, title, question, description, category, status, close_time, resolution_deadline, resolution_type, resolution_source, resolution_rule, challenge_window_hours, proposal_bond_neutrons, challenge_bond_neutrons, resolved_outcome, resolution_notes, resolved_at, invalid_reason, resolution_attempts, volume_neutrons, b, q_yes, q_no, created_by, created_at, profiles!markets_created_by_fkey(display_name, username)";
+
+function normalizeMarketStatus<T extends { status: Market["status"]; close_time: string }>(market: T): T {
+  return {
+    ...market,
+    status: getEffectiveMarketStatus(market.status, market.close_time),
+  };
+}
 
 export async function getViewer() {
   const supabase = await createClient();
@@ -48,15 +56,16 @@ export async function isUsernameAvailable(username: string): Promise<boolean> {
 }
 
 export async function getMarkets(filters?: {
-  status?: string;
+  lifecycle?: string;
+  tradingPhase?: string;
   category?: string;
   search?: string;
 }): Promise<Market[]> {
   const supabase = await createClient();
   let query = supabase.from("markets").select(MARKET_CARD_COLUMNS);
 
-  if (filters?.status && filters.status !== "ALL") {
-    query = query.eq("status", filters.status);
+  if (filters?.lifecycle && filters.lifecycle !== "ALL") {
+    query = query.eq("status", filters.lifecycle);
   }
 
   if (filters?.category) {
@@ -71,11 +80,15 @@ export async function getMarkets(filters?: {
   }
 
   const { data } = await query;
-  const markets = (data as Market[] | null) ?? [];
+  const markets = ((data as Market[] | null) ?? []).map(normalizeMarketStatus);
+  const filteredMarkets =
+    filters?.lifecycle && filters.lifecycle !== "ALL"
+      ? markets.filter((market) => market.status === filters.lifecycle)
+      : markets;
 
-  const statusFilter = filters?.status && filters.status !== "ALL" ? filters.status : "ALL";
+  const statusFilter = filters?.lifecycle && filters.lifecycle !== "ALL" ? filters.lifecycle : "ALL";
 
-  return markets.sort((a, b) => {
+  return filteredMarkets.sort((a, b) => {
     if (statusFilter === "ALL") {
       const aOpenRank = a.status === "OPEN" ? 0 : 1;
       const bOpenRank = b.status === "OPEN" ? 0 : 1;
@@ -96,34 +109,37 @@ export async function getHomePageMarkets(): Promise<{
   openCount: number;
 }> {
   const supabase = createPublicClient();
+  const nowIso = new Date().toISOString();
 
   const [{ data: popularMarkets }, { count: totalMarkets }, { count: openCount }] = await Promise.all([
     supabase
       .from("markets")
       .select(MARKET_CARD_COLUMNS)
       .eq("status", "OPEN")
+      .gt("close_time", nowIso)
       .order("volume_neutrons", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(7),
     supabase.from("markets").select("id", { count: "exact", head: true }),
-    supabase.from("markets").select("id", { count: "exact", head: true }).eq("status", "OPEN"),
+    supabase.from("markets").select("id", { count: "exact", head: true }).eq("status", "OPEN").gt("close_time", nowIso),
   ]);
 
   return {
-    popularMarkets: (popularMarkets as Market[] | null) ?? [],
+    popularMarkets: ((popularMarkets as Market[] | null) ?? []).map(normalizeMarketStatus),
     totalMarkets: totalMarkets ?? 0,
     openCount: openCount ?? 0,
   };
 }
 
 export async function getMarketsFeed(
-  filters: { status?: string; category?: string; search?: string },
+  filters: { lifecycle?: string; tradingPhase?: string; category?: string; search?: string },
   limit = 24,
   offset = 0,
 ): Promise<{ markets: Market[]; totalCount: number }> {
   const supabase = createPublicClient();
   const { data } = await supabase.rpc("get_markets_feed", {
-    p_status: filters.status ?? "ALL",
+    p_lifecycle: filters.lifecycle ?? "ALL",
+    p_trading_phase: filters.tradingPhase ?? "ALL",
     p_category: filters.category ?? null,
     p_search: filters.search ?? null,
     p_limit: limit,
@@ -132,7 +148,7 @@ export async function getMarketsFeed(
 
   const rows = (data as Array<Market & { total_count: number }> | null) ?? [];
   const totalCount = rows[0]?.total_count ?? 0;
-  const markets = rows as unknown as Market[];
+  const markets = rows.map(normalizeMarketStatus) as unknown as Market[];
   return { markets, totalCount };
 }
 
@@ -163,11 +179,11 @@ export async function getMarketById(marketId: string): Promise<Market | null> {
   const market = { ...row };
   delete (market as { profiles?: unknown }).profiles;
 
-  return {
+  return normalizeMarketStatus({
     ...market,
     creator_display_name: creatorProfile?.display_name?.trim() || null,
     creator_username: creatorProfile?.username ?? null,
-  };
+  });
 }
 
 function downsampleHistory(points: ProbabilityHistoryPoint[], maxPoints: number): ProbabilityHistoryPoint[] {
@@ -525,13 +541,14 @@ export async function getAdminOverview(): Promise<AdminOverviewStats | null> {
 }
 
 export async function getAdminMarkets(
-  filters: { status?: string; attention?: string; category?: string; search?: string },
+  filters: { lifecycle?: string; tradingPhase?: string; attention?: string; category?: string; search?: string },
   limit = 25,
   offset = 0,
 ): Promise<{ markets: AdminMarketRow[]; totalCount: number }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("admin_get_markets", {
-    p_status: filters.status ?? "ALL",
+    p_lifecycle: filters.lifecycle ?? "ALL",
+    p_trading_phase: filters.tradingPhase ?? "ALL",
     p_attention: filters.attention ?? "ALL",
     p_category: filters.category ?? null,
     p_search: filters.search ?? null,

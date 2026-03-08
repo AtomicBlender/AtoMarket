@@ -5,6 +5,9 @@ export type MarketStatus =
   | "RESOLVED"
   | "INVALID_REFUND";
 
+export type MarketLifecycleStatus = "OPEN" | "RESOLVING" | "RESOLVED" | "INVALID_REFUND";
+export type MarketTradingPhase = "TRADING_OPEN" | "TRADING_CLOSED";
+
 export type ResolutionType =
   | "URL_SELECTOR"
   | "JSON_PATH"
@@ -50,6 +53,20 @@ export interface Market {
   creator_username?: string | null;
   creator_display_name?: string | null;
   created_at: string;
+}
+
+export interface MarketStateView {
+  lifecycleStatus: MarketLifecycleStatus;
+  tradingPhase: MarketTradingPhase;
+  displayLifecycleLabel: string;
+  displayTradingLabel: string;
+  showTradingPhaseBadge: boolean;
+  canTrade: boolean;
+  isFinalized: boolean;
+  isInResolution: boolean;
+  isPostClose: boolean;
+  canSubmitProposal: boolean;
+  canChallenge: boolean;
 }
 
 export interface Position {

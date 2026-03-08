@@ -29,7 +29,8 @@ const USER_PAGE_MAX = 100;
 type AdminPageProps = {
   searchParams?: Promise<{
     tab?: string;
-    market_status?: string;
+    market_lifecycle?: string;
+    market_trading_phase?: string;
     attention?: string;
     category?: string;
     search?: string;
@@ -90,7 +91,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       getAdminMarkets({ attention: "ALL" }, 6, 0),
       getAdminMarkets(
         {
-          status: params?.market_status ?? "ALL",
+          lifecycle: params?.market_lifecycle ?? "ALL",
+          tradingPhase: params?.market_trading_phase ?? "ALL",
           attention: params?.attention ?? "ALL",
           category: params?.category ?? "",
           search: params?.search ?? "",
@@ -147,7 +149,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   function buildHref(nextTab: string) {
     const query = new URLSearchParams();
     if (nextTab !== "overview") query.set("tab", nextTab);
-    if (params?.market_status && params.market_status !== "ALL") query.set("market_status", params.market_status);
+    if (params?.market_lifecycle && params.market_lifecycle !== "ALL") query.set("market_lifecycle", params.market_lifecycle);
+    if (params?.market_trading_phase && params.market_trading_phase !== "ALL") query.set("market_trading_phase", params.market_trading_phase);
     if (params?.attention && params.attention !== "ALL") query.set("attention", params.attention);
     if (params?.category) query.set("category", params.category);
     if (params?.search) query.set("search", params.search);
@@ -169,7 +172,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const nextMarketParams = new URLSearchParams();
   nextMarketParams.set("tab", "markets");
   nextMarketParams.set("market_count", String(nextMarketCount));
-  if (params?.market_status) nextMarketParams.set("market_status", params.market_status);
+  if (params?.market_lifecycle) nextMarketParams.set("market_lifecycle", params.market_lifecycle);
+  if (params?.market_trading_phase) nextMarketParams.set("market_trading_phase", params.market_trading_phase);
   if (params?.attention) nextMarketParams.set("attention", params.attention);
   if (params?.category) nextMarketParams.set("category", params.category);
   if (params?.search) nextMarketParams.set("search", params.search);
@@ -224,7 +228,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             <form className="rounded-2xl border border-slate-800 bg-slate-900/75 p-4">
               <input type="hidden" name="tab" value="markets" />
               <input type="hidden" name="market_count" value={String(MARKET_PAGE_SIZE)} />
-              <div className="grid gap-3 md:grid-cols-[1.4fr_0.8fr_0.9fr_0.8fr_0.5fr]">
+              <div className="grid gap-3 md:grid-cols-[1.4fr_0.8fr_0.9fr_0.9fr_0.8fr_0.5fr]">
                 <input
                   name="search"
                   defaultValue={params?.search ?? ""}
@@ -232,16 +236,24 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   className="h-11 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
                 />
                 <select
-                  name="market_status"
-                  defaultValue={params?.market_status ?? "ALL"}
+                  name="market_lifecycle"
+                  defaultValue={params?.market_lifecycle ?? "ALL"}
                   className="h-11 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
                 >
-                  <option value="ALL">All statuses</option>
-                  <option value="OPEN">OPEN</option>
-                  <option value="CLOSED">CLOSED</option>
-                  <option value="RESOLVING">RESOLVING</option>
-                  <option value="RESOLVED">RESOLVED</option>
-                  <option value="INVALID_REFUND">INVALID REFUND</option>
+                  <option value="ALL">All lifecycles</option>
+                  <option value="OPEN">Open</option>
+                  <option value="RESOLVING">Resolving</option>
+                  <option value="RESOLVED">Resolved</option>
+                  <option value="INVALID_REFUND">Refunded</option>
+                </select>
+                <select
+                  name="market_trading_phase"
+                  defaultValue={params?.market_trading_phase ?? "ALL"}
+                  className="h-11 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
+                >
+                  <option value="ALL">All trading phases</option>
+                  <option value="TRADING_OPEN">Trading Open</option>
+                  <option value="TRADING_CLOSED">Trading Closed</option>
                 </select>
                 <select
                   name="attention"

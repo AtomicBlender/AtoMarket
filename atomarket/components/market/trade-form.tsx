@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { placeTradeAction } from "@/lib/actions/market";
 import { estimateBuyCost, estimateSellCredit } from "@/lib/domain/lmsr";
+import { getMarketStateView } from "@/lib/domain/market-status";
 import { formatNeutrons, formatPercent } from "@/lib/domain/format";
 import type { Market } from "@/lib/domain/types";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ export function TradeForm({
   const [feedback, setFeedback] = useState<Feedback>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [pending, setPending] = useState(false);
+  const marketState = getMarketStateView(market);
   const maxSellShares = outcome === "YES" ? userYesShares : userNoShares;
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -303,7 +305,7 @@ export function TradeForm({
       ) : null}
       {disabled ? (
         <p className="rounded-md border border-amber-400/30 bg-amber-500/10 p-2 text-xs text-amber-200">
-          Trading is unavailable. Market must be OPEN and before close time.
+          Trading is unavailable. {marketState.displayLifecycleLabel} markets can only trade while trading is open.
         </p>
       ) : null}
       {sellBlocked ? (

@@ -8,6 +8,7 @@ import {
   challengeResolutionAction,
   proposeResolutionAction,
 } from "@/lib/actions/market";
+import { getMarketStateView } from "@/lib/domain/market-status";
 import type { ChallengeKind, Market } from "@/lib/domain/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ export function ResolutionControls({
   >(null);
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const marketState = getMarketStateView(market);
   const nextPath = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
   const loginHref = `/auth/login?next=${encodeURIComponent(nextPath)}`;
 
@@ -130,12 +132,12 @@ export function ResolutionControls({
   const showAuto = market.resolution_type === "URL_SELECTOR" || market.resolution_type === "JSON_PATH";
   const blocked = !isAuthenticated;
   const deadlinePassed = new Date(market.resolution_deadline).getTime() <= Date.now();
-  const isFinalized = market.status === "RESOLVED" || market.status === "INVALID_REFUND";
-  const showProposalForm = !hasBlockingProposal && !deadlinePassed && !isFinalized;
+  const isFinalized = marketState.isFinalized;
+  const showProposalForm = !hasBlockingProposal && marketState.canSubmitProposal;
   const proposalBlocked = blocked || pending || !showProposalForm;
   const hasActiveProposal = Boolean(activeProposalId && activeProposalOutcome);
   const oppositeChallengeOutcome = activeProposalOutcome === "YES" ? "NO" : "YES";
-  const showChallengeForm = hasActiveProposal && !deadlinePassed && !isFinalized;
+  const showChallengeForm = hasActiveProposal && marketState.canChallenge;
   const challengeBlocked = blocked || pending || !showChallengeForm;
   const challengeHelperText =
     challengeKind === "DISAGREE_NOT_RESOLVED"
@@ -148,6 +150,12 @@ export function ResolutionControls({
         <h3 className="text-sm font-semibold text-slate-100">Resolution</h3>
         <p className="text-xs text-slate-400">Submit evidence-backed proposals and challenge disputed outcomes.</p>
       </header>
+
+      <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-xs text-slate-400">
+        <p>Lifecycle: {marketState.displayLifecycleLabel}</p>
+        <p>Trading phase: {marketState.displayTradingLabel}</p>
+        <p>Resolution deadline: {new Date(market.resolution_deadline).toLocaleString()}</p>
+      </div>
 
       {showAuto ? (
         <form action={onAutoResolve} className="space-y-2 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
@@ -164,7 +172,6 @@ export function ResolutionControls({
           <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-xs text-slate-400">
             <p>Proposal bond: {formatNeutrons(market.proposal_bond_neutrons)} neutrons</p>
             <p>Challenge bond: {formatNeutrons(market.challenge_bond_neutrons)} neutrons</p>
-            <p>Resolution deadline: {new Date(market.resolution_deadline).toLocaleString()}</p>
           </div>
 
           {deadlinePassed ? (

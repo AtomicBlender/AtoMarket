@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { formatDateTime } from "@/lib/domain/format";
+import { getMarketStateView } from "@/lib/domain/market-status";
 import type { AdminActionLog, AdminDispute, AdminMarketRow } from "@/lib/domain/types";
+import { LifecycleBadge, TradingPhaseBadge } from "@/components/market/status-badge";
 
 function marketLabel(market: AdminMarketRow): string {
   return market.title || market.id;
@@ -39,19 +41,32 @@ export function AdminOverviewPanels({
           ) : (
             attentionMarkets.map((market) => (
               <article key={market.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                {(() => {
+                  const state = getMarketStateView(market);
+                  return (
+                    <>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <Link href={`/markets/${market.id}`} className="truncate text-sm font-medium text-emerald-300 hover:text-emerald-200">
                       {marketLabel(market)}
                     </Link>
                     <p className="mt-1 text-xs text-slate-500">
-                      {market.status.replaceAll("_", " ")} · close {formatDateTime(market.close_time)} · deadline {formatDateTime(market.resolution_deadline)}
+                      close {formatDateTime(market.close_time)} · deadline {formatDateTime(market.resolution_deadline)}
                     </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <LifecycleBadge status={state.lifecycleStatus} label={state.displayLifecycleLabel} />
+                      {state.showTradingPhaseBadge && state.displayTradingLabel ? (
+                        <TradingPhaseBadge phase={state.tradingPhase} label={state.displayTradingLabel} />
+                      ) : null}
+                    </div>
                   </div>
                   {market.has_challenge ? (
                     <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-200">Challenge</span>
                   ) : null}
                 </div>
+                    </>
+                  );
+                })()}
               </article>
             ))
           )}

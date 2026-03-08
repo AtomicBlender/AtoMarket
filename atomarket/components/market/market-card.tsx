@@ -2,11 +2,13 @@ import Link from "next/link";
 import type { Market } from "@/lib/domain/types";
 import { countdownTo, formatDateTime, formatPercent } from "@/lib/domain/format";
 import { yesPrice } from "@/lib/domain/lmsr";
-import { StatusBadge } from "@/components/market/status-badge";
+import { getMarketStateView } from "@/lib/domain/market-status";
+import { LifecycleBadge, TradingPhaseBadge } from "@/components/market/status-badge";
 
 export function MarketCard({ market }: { market: Market }) {
   const yes = yesPrice(market.q_yes, market.q_no, market.b);
   const no = 1 - yes;
+  const marketState = getMarketStateView(market);
   const compactVolume = new Intl.NumberFormat("en-US", {
     notation: "compact",
     maximumFractionDigits: 1,
@@ -22,7 +24,12 @@ export function MarketCard({ market }: { market: Market }) {
           <p className="text-[11px] uppercase tracking-wider text-slate-500">{market.category ?? "General"}</p>
           <h3 className="mt-1 line-clamp-2 text-base font-semibold text-slate-100">{market.title}</h3>
         </div>
-        <StatusBadge status={market.status} />
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          <LifecycleBadge status={marketState.lifecycleStatus} label={marketState.displayLifecycleLabel} />
+          {marketState.showTradingPhaseBadge && marketState.displayTradingLabel ? (
+            <TradingPhaseBadge phase={marketState.tradingPhase} label={marketState.displayTradingLabel} />
+          ) : null}
+        </div>
       </div>
 
       <p className="line-clamp-2 text-sm text-slate-400">{market.question}</p>

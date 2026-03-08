@@ -16,6 +16,17 @@ const PAD_TOP = 20;
 const PAD_RIGHT = 52;
 const PAD_BOTTOM = 26;
 const PAD_LEFT = 10;
+const DATE_LABEL_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+const DATE_LABEL_WITH_YEAR_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
 function parseTs(value?: string): number | null {
   if (!value) return null;
@@ -112,7 +123,7 @@ function buildPath(points: ProbabilityHistoryPoint[], domainStartTs?: string, do
     .map((point, index) => {
       const x = xForPoint(point.ts, minTs, maxTs, innerWidth);
       const y = PAD_TOP + innerHeight * (1 - point.yes_probability);
-      return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(3)} ${y.toFixed(3)}`;
     })
     .join(" ");
 }
@@ -167,8 +178,8 @@ export function ProbabilityHistoryChart({
         </svg>
 
         <div className={`mt-2 flex items-center justify-between px-1 text-xs text-slate-500 ${compact ? "text-[11px]" : ""}`}>
-          <span>{startDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-          <span>{endDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+          <span>{DATE_LABEL_FORMATTER.format(startDate)}</span>
+          <span>{DATE_LABEL_WITH_YEAR_FORMATTER.format(endDate)}</span>
         </div>
       </div>
     </div>

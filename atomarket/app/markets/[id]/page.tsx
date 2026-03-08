@@ -4,10 +4,11 @@ import { MarketHeader } from "@/components/market/header";
 import { MarketBottomTabs } from "@/components/market/market-bottom-tabs";
 import { ProbabilityHistoryChart } from "@/components/market/probability-history-chart";
 import { ResolutionControls } from "@/components/market/resolution-controls";
-import { StatusBadge } from "@/components/market/status-badge";
+import { LifecycleBadge, TradingPhaseBadge } from "@/components/market/status-badge";
 import { TradeForm } from "@/components/market/trade-form";
 import { countdownTo, formatDateTime, formatNeutrons, formatPercent } from "@/lib/domain/format";
 import { yesPrice } from "@/lib/domain/lmsr";
+import { getMarketStateView } from "@/lib/domain/market-status";
 import {
   getMarketBottomTabsData,
   getMarketById,
@@ -31,8 +32,34 @@ function formatEstimatedNeutrons(value: number): string {
   }).format(value);
 }
 
+function marketStateDescription(
+  state: ReturnType<typeof getMarketStateView>,
+  market: { close_time: string; resolved_at: string | null; resolved_outcome: string | null },
+): string {
+  if (state.lifecycleStatus === "RESOLVED") {
+    return market.resolved_at
+      ? `Market settled as ${market.resolved_outcome} on ${formatDateTime(market.resolved_at)}.`
+      : `Market settled as ${market.resolved_outcome}.`;
+  }
+
+  if (state.lifecycleStatus === "INVALID_REFUND") {
+    return "Resolution was not possible. Open positions were refunded.";
+  }
+
+  if (state.lifecycleStatus === "RESOLVING" && state.tradingPhase === "TRADING_OPEN") {
+    return `Resolution review has started. Trading remains open until ${formatDateTime(market.close_time)}.`;
+  }
+
+  if (state.lifecycleStatus === "RESOLVING") {
+    return `Trading closed at ${formatDateTime(market.close_time)}. Resolution is in progress.`;
+  }
+
+  return `Trading is live until ${formatDateTime(market.close_time)}.`;
+}
+
 export default async function MarketDetailPage({ params }: MarketDetailPageProps) {
   const { id } = await params;
+  const renderedAtTs = new Date().toISOString();
   const [market, viewer] = await Promise.all([getMarketById(id), getViewer()]);
   const [viewerProfile, viewerPosition] = viewer
     ? await Promise.all([getProfile(viewer.id), getPositionForMarket(viewer.id, id)])
@@ -96,8 +123,9 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
   const yes = yesPrice(market.q_yes, market.q_no, market.b);
   const no = 1 - yes;
   const closeTs = new Date(market.close_time).getTime();
+  const renderedAtMs = new Date(renderedAtTs).getTime();
   const chartDomainEndTs = new Date(
-    Number.isFinite(closeTs) ? Math.min(Date.now(), closeTs) : Date.now(),
+    Number.isFinite(closeTs) ? Math.min(renderedAtMs, closeTs) : renderedAtMs,
   ).toISOString();
   const probabilityHistory = await getMarketProbabilityHistory(market.id, yes);
   const latestHistoryYes = probabilityHistory[probabilityHistory.length - 1]?.yes_probability ?? yes;
@@ -105,7 +133,8 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
     viewerPosition != null ? viewerPosition.yes_shares * yes + viewerPosition.no_shares * no : null;
   const viewerUnrealized =
     viewerPosition != null && viewerMarkValue != null ? viewerMarkValue - viewerPosition.net_spent_neutrons : null;
-  const tradingDisabled = market.status !== "OPEN" || new Date(market.close_time).getTime() <= Date.now();
+  const marketState = getMarketStateView(market, renderedAtMs);
+  const tradingDisabled = !marketState.canTrade;
   const creatorLabel = market.creator_display_name || market.creator_username || `user_${market.created_by.slice(0, 8)}`;
 
   return (
@@ -115,7 +144,10 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <article className="space-y-5 rounded-2xl border border-slate-800 bg-slate-900/75 p-5">
             <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={market.status} />
+              <LifecycleBadge status={marketState.lifecycleStatus} label={marketState.displayLifecycleLabel} />
+              {marketState.showTradingPhaseBadge && marketState.displayTradingLabel ? (
+                <TradingPhaseBadge phase={marketState.tradingPhase} label={marketState.displayTradingLabel} />
+              ) : null}
               <span className="rounded border border-slate-700 px-2 py-1 text-xs text-slate-300">
                 {market.resolution_type.replaceAll("_", " ")}
               </span>
@@ -137,6 +169,9 @@ export default async function MarketDetailPage({ params }: MarketDetailPageProps
             </div>
             <p className="text-slate-300">{market.question}</p>
             {market.description ? <p className="text-sm text-slate-400">{market.description}</p> : null}
+            <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-sm text-slate-300">
+              {marketStateDescription(marketState, market)}
+            </div>
             {market.status === "RESOLVED" ? (
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
                 <div className="font-semibold">Final resolution: {market.resolved_outcome}</div>

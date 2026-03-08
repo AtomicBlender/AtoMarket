@@ -1,11 +1,13 @@
 import { MarketHeader } from "@/components/market/header";
 import { MarketCard } from "@/components/market/market-card";
 import { getMarketsFeed } from "@/lib/actions/query";
+import { getMarketStateView } from "@/lib/domain/market-status";
 import Link from "next/link";
 
 interface MarketsPageProps {
   searchParams?: Promise<{
-    status?: string;
+    lifecycle?: string;
+    trading_phase?: string;
     category?: string;
     search?: string;
     count?: string;
@@ -14,7 +16,8 @@ interface MarketsPageProps {
 
 export const revalidate = 90;
 
-const statuses = ["ALL", "OPEN", "CLOSED", "RESOLVING", "RESOLVED", "INVALID_REFUND"] as const;
+const lifecycleOptions = ["ALL", "OPEN", "RESOLVING", "RESOLVED", "INVALID_REFUND"] as const;
+const tradingOptions = ["ALL", "TRADING_OPEN", "TRADING_CLOSED"] as const;
 const MARKETS_CHUNK = 24;
 const MARKETS_MAX = 240;
 
@@ -26,17 +29,19 @@ export default async function MarketsPage({ searchParams }: MarketsPageProps) {
     : MARKETS_CHUNK;
 
   const { markets, totalCount } = await getMarketsFeed({
-    status: params?.status,
+    lifecycle: params?.lifecycle,
+    tradingPhase: params?.trading_phase,
     category: params?.category,
     search: params?.search,
   }, count, 0);
 
-  const openCount = markets.filter((m) => m.status === "OPEN").length;
+  const openCount = markets.filter((m) => getMarketStateView(m).canTrade).length;
   const hasMore = markets.length < totalCount;
   const nextCount = Math.min(MARKETS_MAX, count + MARKETS_CHUNK);
   const loadMoreParams = new URLSearchParams();
   if (params?.search) loadMoreParams.set("search", params.search);
-  if (params?.status) loadMoreParams.set("status", params.status);
+  if (params?.lifecycle) loadMoreParams.set("lifecycle", params.lifecycle);
+  if (params?.trading_phase) loadMoreParams.set("trading_phase", params.trading_phase);
   if (params?.category) loadMoreParams.set("category", params.category);
   loadMoreParams.set("count", String(nextCount));
 
@@ -56,7 +61,7 @@ export default async function MarketsPage({ searchParams }: MarketsPageProps) {
 
         <form className="mb-5 rounded-2xl border border-slate-800 bg-slate-900/75 p-3">
           <input type="hidden" name="count" value={String(MARKETS_CHUNK)} />
-          <div className="grid gap-2 md:grid-cols-[1.4fr_0.8fr_0.8fr_0.6fr]">
+          <div className="grid gap-2 md:grid-cols-[1.4fr_0.8fr_0.9fr_0.8fr_0.6fr]">
             <input
               name="search"
               placeholder="Search title, question, description, or keyword"
@@ -64,13 +69,32 @@ export default async function MarketsPage({ searchParams }: MarketsPageProps) {
               className="h-11 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
             />
             <select
-              name="status"
-              defaultValue={params?.status ?? "ALL"}
+              name="lifecycle"
+              defaultValue={params?.lifecycle ?? "ALL"}
               className="h-11 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
             >
-              {statuses.map((status) => (
+              {lifecycleOptions.map((status) => (
                 <option key={status} value={status}>
-                  {status === "ALL" ? "All statuses" : status.replaceAll("_", " ")}
+                  {status === "ALL"
+                    ? "All lifecycles"
+                    : status === "OPEN"
+                      ? "Open"
+                      : status === "RESOLVING"
+                        ? "Resolving"
+                        : status === "RESOLVED"
+                          ? "Resolved"
+                          : "Refunded"}
+                </option>
+              ))}
+            </select>
+            <select
+              name="trading_phase"
+              defaultValue={params?.trading_phase ?? "ALL"}
+              className="h-11 rounded-md border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100"
+            >
+              {tradingOptions.map((phase) => (
+                <option key={phase} value={phase}>
+                  {phase === "ALL" ? "All trading phases" : phase === "TRADING_OPEN" ? "Trading Open" : "Trading Closed"}
                 </option>
               ))}
             </select>
