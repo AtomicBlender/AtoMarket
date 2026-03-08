@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -45,9 +46,43 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const currentYear = new Date().getFullYear();
+
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">{children}</body>
+      <body className="min-h-screen bg-slate-950 text-slate-100 antialiased">
+        <div className="flex min-h-screen flex-col">
+          <div className="flex-1">{children}</div>
+          <footer className="border-t border-slate-800/80 bg-slate-950/80">
+            <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-2 px-4 py-4 text-sm text-slate-400">
+              <Link
+                href="https://atomic-blender.com"
+                target="_blank"
+                rel="noreferrer"
+                className="transition hover:text-emerald-300"
+              >
+                Created by AtomicBlender LLC ↗
+              </Link>
+              <span aria-hidden="true" className="text-slate-600">
+                &middot;
+              </span>
+              <span>&copy; {currentYear}</span>
+              <span aria-hidden="true" className="text-slate-600">
+                &middot;
+              </span>
+              <Link href="/privacy" className="transition hover:text-emerald-300">
+                Privacy
+              </Link>
+              <span aria-hidden="true" className="text-slate-600">
+                &middot;
+              </span>
+              <Link href="/terms" className="transition hover:text-emerald-300">
+                Terms of Use
+              </Link>
+            </div>
+          </footer>
+        </div>
+      </body>
     </html>
   );
 }
