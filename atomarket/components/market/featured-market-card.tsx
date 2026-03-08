@@ -37,7 +37,7 @@ export function FeaturedMarketCard({
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="space-y-1">
           <p className="text-[11px] uppercase tracking-wider text-slate-500">{market.category ?? "General"}</p>
-          <h3 className="line-clamp-2 text-lg font-semibold text-slate-100">{market.title}</h3>
+          <h3 className="line-clamp-2 text-2xl font-semibold leading-tight text-slate-100">{market.title}</h3>
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <LifecycleBadge status={marketState.lifecycleStatus} label={marketState.displayLifecycleLabel} />
@@ -51,7 +51,7 @@ export function FeaturedMarketCard({
 
       <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/70 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <div className={`text-3xl font-semibold ${latestHistoryYes >= 0.5 ? "text-sky-300" : "text-rose-300"}`}>
+          <div className={`text-xl font-semibold ${latestHistoryYes >= 0.5 ? "text-sky-300" : "text-rose-300"}`}>
             {formatPercent(latestHistoryYes)} chance
           </div>
         </div>

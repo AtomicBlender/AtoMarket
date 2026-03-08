@@ -26,6 +26,39 @@ function toTradeMessage(raw: string): string {
   return raw;
 }
 
+function toProposalMessage(raw: string): string {
+  if (raw.includes("not_authenticated")) return "Sign in required.";
+  if (raw.includes("inactive_account")) return "Account is inactive. Contact support to reactivate.";
+  if (raw.includes("market_not_found")) return "Market not found.";
+  if (raw.includes("manual_bond_only")) return "Proposals only allowed for MANUAL_WITH_BOND markets.";
+  if (raw.includes("market_already_finalized")) return "This market is already finalized. New proposals are not allowed.";
+  if (raw.includes("resolution_deadline_passed")) return "Resolution deadline has passed. No new proposals are allowed.";
+  if (raw.includes("active_proposal_exists")) {
+    return "A proposal is already active for this market. You can challenge it instead.";
+  }
+  if (raw.includes("insufficient_proposal_bond")) return "Insufficient neutrons to post proposal bond.";
+  return raw;
+}
+
+function toChallengeMessage(raw: string): string {
+  if (raw.includes("not_authenticated")) return "Sign in required.";
+  if (raw.includes("inactive_account")) return "Account is inactive. Contact support to reactivate.";
+  if (raw.includes("proposal_not_found")) return "Proposal not found.";
+  if (raw.includes("proposal_not_active")) return "Proposal is not active.";
+  if (raw.includes("challenge_window_closed")) return "Challenge window closed.";
+  if (raw.includes("challenge_target_market_mismatch")) return "Challenge target market mismatch.";
+  if (raw.includes("market_not_found")) return "Market not found.";
+  if (raw.includes("market_already_finalized")) return "This market is already finalized. Challenges are not allowed.";
+  if (raw.includes("challenge_outcome_required")) return "Invalid challenge outcome.";
+  if (raw.includes("challenge_outcome_not_allowed")) return "Disagreement challenges cannot specify an outcome.";
+  if (raw.includes("challenge_outcome_must_be_opposite")) {
+    return "Challenge outcome must be opposite of the proposed outcome.";
+  }
+  if (raw.includes("challenge_already_exists")) return "This proposal has already been challenged.";
+  if (raw.includes("insufficient_challenge_bond")) return "Insufficient neutrons to post challenge bond.";
+  return raw;
+}
+
 function isOutcome(value: string): value is OutcomeType {
   return value === "YES" || value === "NO";
 }
@@ -139,7 +172,7 @@ export async function proposeResolutionAction(formData: FormData): Promise<Actio
 
     const { data: market, error: marketError } = await supabase
       .from("markets")
-      .select("id, status, resolution_type, close_time, proposal_bond_neutrons, challenge_window_hours, resolution_deadline, resolution_attempts")
+      .select("id, status, resolution_type, resolution_deadline")
       .eq("id", marketId)
       .single();
 
@@ -155,54 +188,14 @@ export async function proposeResolutionAction(formData: FormData): Promise<Actio
       return { ok: false, message: "Resolution deadline has passed. No new proposals are allowed." };
     }
 
-    const { data: existingProposal } = await supabase
-      .from("resolution_proposals")
-      .select("id, status")
-      .eq("market_id", market.id)
-      .in("status", ["ACTIVE", "CHALLENGED"])
-      .maybeSingle();
-
-    if (existingProposal) {
-      return {
-        ok: false,
-        message: "A proposal is already active for this market. You can challenge it instead.",
-      };
-    }
-
-    const proposerBalance = await currentBalance(supabase, authData.user.id);
-    if (proposerBalance < market.proposal_bond_neutrons) {
-      return { ok: false, message: "Insufficient neutrons to post proposal bond." };
-    }
-
-    const challengeDeadline = new Date(Date.now() + market.challenge_window_hours * 3600 * 1000).toISOString();
-
-    const { error } = await supabase.from("resolution_proposals").insert({
-      market_id: market.id,
-      proposed_by: authData.user.id,
-      proposed_outcome: outcome,
-      evidence_url: evidenceUrl || null,
-      evidence_note: evidenceNote || null,
-      bond_neutrons: market.proposal_bond_neutrons,
-      challenge_deadline: challengeDeadline,
-      status: "ACTIVE",
+    const { error } = await supabase.rpc("submit_resolution_proposal_with_bond", {
+      p_market_id: market.id,
+      p_proposed_outcome: outcome,
+      p_evidence_url: evidenceUrl || null,
+      p_evidence_note: evidenceNote || null,
     });
 
-    if (error) return { ok: false, message: error.message };
-
-    await supabase
-      .from("profiles")
-      .update({ neutron_balance: (await currentBalance(supabase, authData.user.id)) - market.proposal_bond_neutrons })
-      .eq("id", authData.user.id);
-
-    const submittedAfterClose = new Date(market.close_time).getTime() <= Date.now();
-
-    await supabase
-      .from("markets")
-      .update({
-        resolution_attempts: (market.resolution_attempts ?? 0) + 1,
-        status: submittedAfterClose ? "RESOLVING" : "OPEN",
-      })
-      .eq("id", market.id);
+    if (error) return { ok: false, message: toProposalMessage(error.message) };
 
     revalidatePath(`/markets/${marketId}`);
     revalidatePath("/portfolio");
@@ -263,19 +256,9 @@ export async function challengeResolutionAction(formData: FormData): Promise<Act
       challengeOutcome = challengeOutcomeRaw;
     }
 
-    const { data: existingChallenge } = await supabase
-      .from("resolution_challenges")
-      .select("id")
-      .eq("proposal_id", proposal.id)
-      .maybeSingle();
-
-    if (existingChallenge) {
-      return { ok: false, message: "This proposal has already been challenged." };
-    }
-
     const { data: market, error: marketError } = await supabase
       .from("markets")
-      .select("id, status, challenge_bond_neutrons, resolution_attempts")
+      .select("id, status")
       .eq("id", proposal.market_id)
       .single();
 
@@ -287,35 +270,16 @@ export async function challengeResolutionAction(formData: FormData): Promise<Act
       return { ok: false, message: "This market is already finalized. Challenges are not allowed." };
     }
 
-    const challengerBalance = await currentBalance(supabase, authData.user.id);
-    if (challengerBalance < market.challenge_bond_neutrons) {
-      return { ok: false, message: "Insufficient neutrons to post challenge bond." };
-    }
-
-    const { error: challengeError } = await supabase.from("resolution_challenges").insert({
-      proposal_id: proposal.id,
-      market_id: proposal.market_id,
-      challenged_by: authData.user.id,
-      challenge_kind: challengeKind,
-      challenge_outcome: challengeOutcome,
-      evidence_url: evidenceUrl || null,
-      evidence_note: evidenceNote || null,
-      bond_neutrons: market.challenge_bond_neutrons,
+    const { error: challengeError } = await supabase.rpc("submit_resolution_challenge_with_bond", {
+      p_proposal_id: proposal.id,
+      p_market_id: proposal.market_id,
+      p_challenge_kind: challengeKind,
+      p_challenge_outcome: challengeOutcome,
+      p_evidence_url: evidenceUrl || null,
+      p_evidence_note: evidenceNote || null,
     });
 
-    if (challengeError) return { ok: false, message: challengeError.message };
-
-    const { error: proposalUpdateError } = await supabase
-      .from("resolution_proposals")
-      .update({ status: "CHALLENGED" })
-      .eq("id", proposal.id);
-
-    if (proposalUpdateError) return { ok: false, message: proposalUpdateError.message };
-
-    await supabase
-      .from("profiles")
-      .update({ neutron_balance: (await currentBalance(supabase, authData.user.id)) - market.challenge_bond_neutrons })
-      .eq("id", authData.user.id);
+    if (challengeError) return { ok: false, message: toChallengeMessage(challengeError.message) };
 
     revalidatePath(`/markets/${marketId}`);
     revalidatePath("/portfolio");
@@ -463,15 +427,6 @@ export async function attemptAutoResolveAction(formData: FormData): Promise<Acti
   }
 
   return { ok: true, message: `Auto-resolved ${result.outcome}.` };
-}
-
-async function currentBalance(supabase: Awaited<ReturnType<typeof createClient>>, userId: string): Promise<number> {
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("neutron_balance")
-    .eq("id", userId)
-    .single();
-  return Number(profile?.neutron_balance ?? 0);
 }
 
 async function assertActiveProfile(
