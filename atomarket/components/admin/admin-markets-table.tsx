@@ -46,7 +46,10 @@ export function AdminMarketsTable({
           {markets.map((market) => (
             <article key={market.id} className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(0,1.6fr)_0.7fr_0.8fr_0.9fr] lg:items-center">
               <div className="min-w-0">
-                <Link href={`/markets/${market.id}`} className="truncate text-base font-medium text-emerald-300 hover:text-emerald-200">
+                <Link
+                  href={`/markets/${market.id}`}
+                  className="block break-words text-base font-medium text-emerald-300 [overflow-wrap:anywhere] hover:text-emerald-200 lg:truncate"
+                >
                   {market.title}
                 </Link>
                 <p className="mt-1 text-xs text-slate-500">

@@ -35,13 +35,18 @@ export function AdminUsersTable({
             <article key={user.user_id} className="grid gap-3 px-5 py-4 lg:grid-cols-[minmax(0,1.5fr)_0.75fr_0.9fr_0.85fr] lg:items-center">
               <div className="min-w-0">
                 {user.username ? (
-                  <Link href={`/u/${user.username}`} className="truncate text-base font-medium text-emerald-300 hover:text-emerald-200">
+                  <Link
+                    href={`/u/${user.username}`}
+                    className="block break-words text-base font-medium text-emerald-300 [overflow-wrap:anywhere] hover:text-emerald-200 lg:truncate"
+                  >
                     {userLabel(user)}
                   </Link>
                 ) : (
-                  <p className="truncate text-base font-medium text-slate-100">{userLabel(user)}</p>
+                  <p className="break-words text-base font-medium text-slate-100 [overflow-wrap:anywhere] lg:truncate">
+                    {userLabel(user)}
+                  </p>
                 )}
-                <p className="mt-1 text-xs text-slate-500">
+                <p className="mt-1 break-words text-xs text-slate-500 [overflow-wrap:anywhere]">
                   {user.username ? `@${user.username} · ` : ""}{user.is_admin ? "Admin" : "Member"} · {user.is_active ? "Active" : "Inactive"}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2 text-xs">

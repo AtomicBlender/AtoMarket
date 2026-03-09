@@ -30,12 +30,15 @@ function renderUserLink(row: {
   const label = resolveDisplayName(row);
   if (row.username) {
     return (
-      <Link href={`/u/${row.username}`} className="truncate text-emerald-300 hover:text-emerald-200 hover:underline">
+      <Link
+        href={`/u/${row.username}`}
+        className="block break-words text-emerald-300 [overflow-wrap:anywhere] hover:text-emerald-200 hover:underline"
+      >
         {label}
       </Link>
     );
   }
-  return <span className="truncate text-slate-200">{label}</span>;
+  return <span className="block break-words text-slate-200 [overflow-wrap:anywhere]">{label}</span>;
 }
 
 function HoldersTable({
@@ -136,13 +139,16 @@ function ActivityTable({ rows }: { rows: MarketPublicTrade[] }) {
                 {trade.username ? (
                   <Link
                     href={`/u/${trade.username}`}
-                    className="truncate font-medium leading-tight text-emerald-300 hover:text-emerald-200"
+                    className="block break-words font-medium leading-tight text-emerald-300 [overflow-wrap:anywhere] hover:text-emerald-200 md:truncate"
                     style={{ fontSize: "clamp(1rem, 1vw, 1.12rem)" }}
                   >
                     {resolveDisplayName(trade)}
                   </Link>
                 ) : (
-                  <p className="truncate font-medium leading-tight text-slate-100" style={{ fontSize: "clamp(1rem, 1vw, 1.12rem)" }}>
+                  <p
+                    className="break-words font-medium leading-tight text-slate-100 [overflow-wrap:anywhere] md:truncate"
+                    style={{ fontSize: "clamp(1rem, 1vw, 1.12rem)" }}
+                  >
                     {resolveDisplayName(trade)}
                   </p>
                 )}

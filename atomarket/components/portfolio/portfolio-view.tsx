@@ -372,9 +372,9 @@ export function PortfolioView({
 
   return (
     <section className="mx-auto max-w-6xl space-y-7 px-4 py-8 md:space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold text-slate-100">{title}</h1>
-        {subtitle ? <p className="text-sm text-slate-400">{subtitle}</p> : null}
+      <div className="min-w-0">
+        <h1 className="break-words text-2xl font-semibold text-slate-100 [overflow-wrap:anywhere]">{title}</h1>
+        {subtitle ? <p className="break-words text-sm text-slate-400 [overflow-wrap:anywhere]">{subtitle}</p> : null}
       </div>
 
       <div className="grid gap-3 md:grid-cols-4">
@@ -504,7 +504,7 @@ export function PortfolioView({
                       <div className="min-w-0">
                         <Link
                           href={`/markets/${row.marketId}`}
-                          className="truncate font-medium leading-tight text-emerald-300 hover:text-emerald-200"
+                          className="block break-words font-medium leading-tight text-emerald-300 [overflow-wrap:anywhere] hover:text-emerald-200 md:truncate"
                           style={{ fontSize: "clamp(1rem, 1vw, 1.12rem)" }}
                         >
                           {row.marketTitle}
@@ -574,7 +574,7 @@ export function PortfolioView({
                           <div className="min-w-0">
                             <Link
                               href={`/markets/${row.marketId}`}
-                              className="truncate font-medium leading-tight text-emerald-300 hover:text-emerald-200"
+                              className="block break-words font-medium leading-tight text-emerald-300 [overflow-wrap:anywhere] hover:text-emerald-200 md:truncate"
                               style={{ fontSize: "clamp(1rem, 1vw, 1.12rem)" }}
                             >
                               {row.marketTitle}
@@ -643,7 +643,7 @@ export function PortfolioView({
                       <div className="min-w-0">
                         <Link
                           href={`/markets/${trade.market_id}`}
-                          className="truncate font-medium leading-tight text-emerald-300 hover:text-emerald-200"
+                          className="block break-words font-medium leading-tight text-emerald-300 [overflow-wrap:anywhere] hover:text-emerald-200 md:truncate"
                           style={{ fontSize: "clamp(1rem, 1vw, 1.12rem)" }}
                         >
                           {trade.market_title ?? trade.market_id.slice(0, 8)}

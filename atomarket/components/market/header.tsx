@@ -33,7 +33,7 @@ export async function MarketHeader({ includeViewer = true }: { includeViewer?: b
   return (
     <header className="sticky top-0 z-30 border-b border-emerald-500/20 bg-slate-950/90 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-        <div className="flex items-center gap-6">
+        <div className="min-w-0 flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-emerald-300">
             <Image
               src={atoMarketLogo}
@@ -67,13 +67,13 @@ export async function MarketHeader({ includeViewer = true }: { includeViewer?: b
         </div>
 
         {user ? (
-          <div className="flex flex-wrap items-center gap-2 text-sm">
+          <div className="min-w-0 flex flex-wrap items-center gap-2 text-sm">
             <span className="rounded-md border border-emerald-400/35 bg-emerald-500/10 px-2 py-1 text-emerald-200">
               {formatNeutrons(profile?.neutron_balance ?? 0)} neutrons
             </span>
             <Link
               href="/profile"
-              className="max-w-40 truncate rounded-md px-2 py-1 text-slate-300 transition hover:bg-slate-800 hover:text-emerald-200"
+              className="block max-w-40 truncate rounded-md px-2 py-1 text-slate-300 transition hover:bg-slate-800 hover:text-emerald-200"
             >
               {profile?.display_name || user.email}
             </Link>

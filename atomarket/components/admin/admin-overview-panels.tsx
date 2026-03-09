@@ -47,7 +47,10 @@ export function AdminOverviewPanels({
                     <>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <Link href={`/markets/${market.id}`} className="truncate text-sm font-medium text-emerald-300 hover:text-emerald-200">
+                    <Link
+                      href={`/markets/${market.id}`}
+                      className="block break-words text-sm font-medium text-emerald-300 [overflow-wrap:anywhere] hover:text-emerald-200"
+                    >
                       {marketLabel(market)}
                     </Link>
                     <p className="mt-1 text-xs text-slate-500">
@@ -114,7 +117,7 @@ export function AdminOverviewPanels({
                 <article key={action.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-100">
+                      <p className="break-words text-sm font-medium text-slate-100 [overflow-wrap:anywhere]">
                         {action.action_type} · {action.market_title ?? action.market_id}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
@@ -125,7 +128,9 @@ export function AdminOverviewPanels({
                       Open
                     </Link>
                   </div>
-                  {action.note ? <p className="mt-2 text-sm text-slate-400">{action.note}</p> : null}
+                  {action.note ? (
+                    <p className="mt-2 break-words text-sm text-slate-400 [overflow-wrap:anywhere]">{action.note}</p>
+                  ) : null}
                 </article>
               ))
             )}

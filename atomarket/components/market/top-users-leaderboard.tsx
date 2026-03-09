@@ -84,10 +84,15 @@ export function TopUsersLeaderboard({ entries }: { entries: LeaderboardEntry[] }
             >
               <span className="text-xs font-semibold text-slate-500">#{idx + 1}</span>
               <div className="min-w-0">
-                <Link href={`/u/${entry.username}`} className="truncate text-sm font-medium text-emerald-300 hover:text-emerald-200">
+                <Link
+                  href={`/u/${entry.username}`}
+                  className="block break-words text-sm font-medium text-emerald-300 [overflow-wrap:anywhere] hover:text-emerald-200"
+                >
                   {entry.display_name?.trim() || entry.username}
                 </Link>
-                <p className="truncate text-[11px] text-slate-500">@{entry.username} · {entry.resolved_markets_count} resolved</p>
+                <p className="break-words text-[11px] text-slate-500 [overflow-wrap:anywhere]">
+                  @{entry.username} · {entry.resolved_markets_count} resolved
+                </p>
               </div>
               <div className="text-right">
                 <p className={`text-sm font-semibold tabular-nums ${pnlClass(entry.net_gain_neutrons)}`}>

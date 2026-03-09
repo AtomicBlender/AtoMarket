@@ -181,7 +181,7 @@ export function ProfileSettingsForm({
         <div className="mt-3 grid gap-2 text-sm text-slate-300">
           <div>
             <span className="text-slate-500">Email</span>
-            <p className="mt-1 text-slate-100">{email}</p>
+            <p className="mt-1 break-words text-slate-100 [overflow-wrap:anywhere]">{email}</p>
           </div>
 
           <div>
@@ -191,8 +191,11 @@ export function ProfileSettingsForm({
           <div>
             <span className="text-slate-500">Public profile</span>
             {profile?.username ? (
-              <p className="mt-1 text-slate-100">
-                <Link href={`/u/${profile.username}`} className="text-emerald-300 hover:text-emerald-200">
+              <p className="mt-1 break-words text-slate-100 [overflow-wrap:anywhere]">
+                <Link
+                  href={`/u/${profile.username}`}
+                  className="break-words text-emerald-300 [overflow-wrap:anywhere] hover:text-emerald-200"
+                >
                   /u/{profile.username}
                 </Link>
               </p>
